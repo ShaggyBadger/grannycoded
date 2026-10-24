@@ -1,0 +1,49 @@
+{
+  "version": 1,
+  "purpose": "Route each task to the project conventions it needs; read this file first, then only the applicable topic documents.",
+  "paths_relative_to": "instructions/project_conventions/",
+  "topics": [
+    {
+      "id": "workflow-and-architecture",
+      "path": "workflow_and_architecture.md",
+      "summary": "Django/Wagtail app boundaries, reusable code, and project structure.",
+      "when_to_read": ["general code changes", "project structure", "cross-app decisions"]
+    },
+    {
+      "id": "planning-and-progress",
+      "path": "planning_and_progress.md",
+      "summary": "Atomic work, plans, progress tracking, and archiving completed work.",
+      "when_to_read": ["non-trivial work", "multi-file changes", "planning", "session handoff"]
+    },
+    {
+      "id": "documentation-guidelines",
+      "path": "documentation_guidelines.md",
+      "summary": "How to keep project guidance findable, atomic, reusable, and concise.",
+      "when_to_read": ["creating instructions", "updating guidance", "documentation structure"]
+    },
+    {
+      "id": "python-and-services",
+      "path": "python_and_services.md",
+      "summary": "Python conventions, service boundaries, and when to introduce packages.",
+      "when_to_read": ["Python implementation", "business logic", "service modules"]
+    },
+    {
+      "id": "data-and-database",
+      "path": "data_and_database.md",
+      "summary": "Postgres configuration, migrations, secrets, and database safety.",
+      "when_to_read": ["models", "queries", "migrations", "database configuration", "storage configuration", "secrets"]
+    },
+    {
+      "id": "testing-and-quality",
+      "path": "testing_and_quality.md",
+      "summary": "Change-specific tests and Docker-based verification commands.",
+      "when_to_read": ["behavior changes", "bug fixes", "verification"]
+    },
+    {
+      "id": "logging-and-observability",
+      "path": "logging_and_observability.md",
+      "summary": "Central Python logging, rotating file thresholds, and sensitive-data rules.",
+      "when_to_read": ["logging", "error handling", "production diagnostics"]
+    }
+  ]
+}

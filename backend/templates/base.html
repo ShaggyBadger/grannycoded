@@ -1,0 +1,13 @@
+{% load static wagtailcore_tags %}
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}{{ page.title }}{% endblock %}</title>
+    <link rel="stylesheet" href="{% static 'css/site.css' %}">
+  </head>
+  <body class="min-h-screen bg-white text-slate-900 antialiased">
+    {% block content %}{% endblock %}
+  </body>
+</html>
