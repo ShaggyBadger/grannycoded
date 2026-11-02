@@ -31,6 +31,13 @@
       <div class="blog-featured-copy">
         <h2 id="featured-story-title"><a href="{% pageurl featured_post %}">{{ featured_post.title }}</a></h2>
         {% if featured_post.excerpt %}<p>{{ featured_post.excerpt }}</p>{% endif %}
+        {% if featured_post.tags.all %}
+          <ul class="blog-tag-list" aria-label="Topics">
+            {% for tag in featured_post.tags.all %}
+              <li><span class="blog-tag">{{ tag.name }}</span></li>
+            {% endfor %}
+          </ul>
+        {% endif %}
         {% if featured_post.first_published_at %}
           <time datetime="{{ featured_post.first_published_at|date:'Y-m-d' }}">{{ featured_post.first_published_at|date:'F j, Y' }}</time>
         {% endif %}
@@ -62,6 +69,13 @@
               {% endif %}
               <h3><a href="{% pageurl post %}">{{ post.title }}</a></h3>
               {% if post.excerpt %}<p>{{ post.excerpt }}</p>{% endif %}
+              {% if post.tags.all %}
+                <ul class="blog-tag-list" aria-label="Topics">
+                  {% for tag in post.tags.all %}
+                    <li><span class="blog-tag">{{ tag.name }}</span></li>
+                  {% endfor %}
+                </ul>
+              {% endif %}
               <a class="blog-card-link" href="{% pageurl post %}">Read story <span aria-hidden="true">→</span></a>
             </div>
           </article>

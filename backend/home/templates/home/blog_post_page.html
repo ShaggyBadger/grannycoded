@@ -22,6 +22,13 @@
       <time datetime="{{ page.first_published_at|date:'Y-m-d' }}">{{ page.first_published_at|date:'F j, Y' }}</time>
     {% endif %}
     {% if page.excerpt %}<p class="article-excerpt">{{ page.excerpt }}</p>{% endif %}
+    {% if page.tags.all %}
+      <ul class="blog-tag-list article-tags" aria-label="Topics">
+        {% for tag in page.tags.all %}
+          <li><span class="blog-tag">{{ tag.name }}</span></li>
+        {% endfor %}
+      </ul>
+    {% endif %}
   </header>
   {% if page.cover_asset %}
     <img class="article-cover" src="{{ page.cover_asset.get_url }}" alt="{{ page.title }}">

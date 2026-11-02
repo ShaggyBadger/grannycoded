@@ -489,6 +489,7 @@ class StorefrontTests(TestCase):
         self.assertContains(response, "Post title")
         self.assertContains(response, "Short summary")
         self.assertContains(response, "Post body")
+        self.assertContains(response, "Tags")
         self.assertContains(response, "Upload a cover image")
         self.assertContains(response, 'name="cover_upload"')
         self.assertContains(response, 'type="file"')
@@ -649,6 +650,42 @@ class StorefrontTests(TestCase):
         self.assertContains(first_page, "More stories")
         self.assertContains(second_page, "Page 2 of 2")
         self.assertContains(second_page, "Quilt story 1")
+
+    def test_blog_tags_are_displayed_without_filtering_posts(self):
+        blog = self.home.add_child(
+            instance=BlogIndexPage(title="Blog", slug="blog")
+        )
+        tagged_post = blog.add_child(
+            instance=BlogPostPage(
+                title="A Found Quilt",
+                slug="a-found-quilt",
+                excerpt="A story about a found quilt.",
+            )
+        )
+        tagged_post.tags.add("Found quilts")
+        tagged_post.save_revision().publish()
+
+        other_post = blog.add_child(
+            instance=BlogPostPage(
+                title="A Custom Piece",
+                slug="a-custom-piece",
+                excerpt="A custom-work story.",
+            )
+        )
+        other_post.tags.add("Custom work")
+        other_post.save_revision().publish()
+
+        blog_response = self.client.get("/blog/", {"tag": "found-quilts"})
+        article_response = self.client.get("/blog/a-found-quilt/")
+
+        self.assertEqual(blog_response.status_code, 200)
+        self.assertContains(blog_response, "A Found Quilt")
+        self.assertContains(blog_response, "A Custom Piece")
+        self.assertContains(blog_response, "Found quilts")
+        self.assertNotContains(blog_response, "Browse by topic")
+        self.assertNotContains(blog_response, 'href="?tag=')
+        self.assertContains(article_response, "Found quilts")
+        self.assertNotContains(article_response, "/blog/?tag=")
 
     def test_custom_order_request_is_saved_for_wagtail_review(self):
         response = self.client.post(

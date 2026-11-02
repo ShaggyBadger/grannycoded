@@ -9,6 +9,9 @@ from django.core.validators import MinValueValidator
 from django.db import models
 from django.db.models import Prefetch
 from django.urls import reverse
+from modelcluster.contrib.taggit import ClusterTaggableManager
+from modelcluster.fields import ParentalKey
+from taggit.models import TaggedItemBase
 from wagtail.admin.panels import FieldPanel
 from wagtail.contrib.settings.models import BaseSiteSetting, register_setting
 from wagtail.fields import RichTextField
@@ -138,6 +141,7 @@ class BlogIndexPage(Page):
             BlogPostPage.objects.child_of(self)
             .live()
             .select_related("cover_asset", "cover_image")
+            .prefetch_related("tags")
             .order_by("-first_published_at")
             .specific()
         )
@@ -440,6 +444,7 @@ class BlogPostPage(Page):
         on_delete=models.SET_NULL,
         related_name="blog_covers",
     )
+    tags = ClusterTaggableManager(through="home.BlogPostPageTag", blank=True)
 
     parent_page_types = ["home.BlogIndexPage"]
     subpage_types = []
@@ -455,6 +460,7 @@ class BlogPostPage(Page):
             heading="Post body",
             help_text="Write and format the full story with the toolbar.",
         ),
+        FieldPanel("tags", heading="Tags"),
         FieldPanel(
             "cover_upload",
             heading="Upload a cover image",
@@ -468,6 +474,14 @@ class BlogPostPage(Page):
             or self.cover_asset.status != ImageAsset.Status.ACTIVE
         ):
             raise ValidationError("Blog covers must use active public image assets.")
+
+
+class BlogPostPageTag(TaggedItemBase):
+    content_object = ParentalKey(
+        "home.BlogPostPage",
+        related_name="tagged_items",
+        on_delete=models.CASCADE,
+    )
 
 
 @register_setting

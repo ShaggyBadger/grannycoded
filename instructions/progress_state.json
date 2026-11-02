@@ -78,7 +78,9 @@
     "backend/static-src/css/input.css",
     ".env.example",
     "README.md",
-    "backend/README.md"
+    "backend/README.md",
+    "backend/home/migrations/0013_blogpostpagetag_blogpostpage_tags.py",
+    "instructions/completed_tasks/2026-11-02-blog-tags.md"
   ],
   "validation": [
     "Oscar 4.2 passes Docker checks/tests with Django 6.0.9 and Wagtail 8.0.1",
@@ -107,7 +109,9 @@
     "Published and expanded the 338-word introductory post 'A New Life for Found Quilts' with an existing Mimi Coat image as its cover",
     "Renamed the published Journal index to Blog, updated site links, and preserved permanent redirects for the old index and post paths",
     "Added a Blog posts shortcut to Wagtail and clarified the article editor; all 28 Docker tests, Django checks, migration checks, and UI detection pass",
-    "Added a styled blog cover upload that creates and links validated public editorial assets; all 30 Docker tests, Django checks, migration checks, and UI detection pass"
+    "Added a styled blog cover upload that creates and links validated public editorial assets; all 30 Docker tests, Django checks, migration checks, and UI detection pass",
+    "Added Wagtail blog tags and non-interactive labels on cards/articles; applied home.0013 and tagged all six local live posts. Filtering and search deferred",
+    "Docker tests, Django checks, makemigrations --check, Tailwind CSS build, and local blog responses pass"
   ],
   "blockers": [
     "Leah must verify current product data, photos, and stock from the 12-listing snapshot",
