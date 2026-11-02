@@ -18,6 +18,15 @@ UI live here.
   input, and `static/` receives generated assets.
 - `requirements.txt` and the npm manifests pin the backend and Tailwind tools.
 
+## Search indexing
+
+- Set `PUBLIC_SITE_URL` to the canonical production origin; canonical tags and
+  `robots.txt`/`sitemap.xml` use this value.
+- Set `GOOGLE_SITE_VERIFICATION` to the content value from Search Console's
+  HTML-tag verification method, then submit `/sitemap.xml` in Search Console.
+- `robots.txt` disallows crawling when `DEBUG=True`; production must run with
+  `DEBUG=False` to allow indexing.
+
 Run project commands from the repository root through Compose, for example:
 
 ```bash

@@ -4,15 +4,13 @@ from decimal import Decimal, InvalidOperation
 from html import unescape
 import json
 from pathlib import Path
-import re
 from urllib.parse import urlparse
 
 from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
 from oscar.core.loading import get_model
 
-
-LISTING_URL_PATTERN = re.compile(r"https?://www\.etsy\.com/listing/\d+/[^\s\"']*")
+from home.models import BrandSettings, ImageAsset, ProductImageAsset
 
 
 class Command(BaseCommand):
@@ -24,6 +22,12 @@ class Command(BaseCommand):
             type=Path,
             default=Path(settings.BASE_DIR) / "home" / "catalog_snapshot.json",
             help="Catalog snapshot JSON (defaults to the checked-in snapshot).",
+        )
+        parser.add_argument(
+            "--image-manifest",
+            type=Path,
+            default=Path(settings.BASE_DIR) / "home" / "catalog_image_manifest.json",
+            help="ULID image metadata manifest for product and logo images.",
         )
 
     def handle(self, *args, **options):
@@ -62,7 +66,7 @@ class Command(BaseCommand):
             attribute.code: attribute
             for attribute in ProductAttribute.objects.filter(product_class=product_class)
         }
-        image_paths = self._local_image_paths()
+        image_manifest = self._read_image_manifest(options["image_manifest"])
 
         created = 0
         existing = 0
@@ -81,6 +85,11 @@ class Command(BaseCommand):
                     "priority": 1 if position == 1 else 0,
                 },
             )
+            self._attach_product_image(
+                product,
+                listing_url,
+                image_manifest,
+            )
             if not was_created:
                 existing += 1
                 continue
@@ -92,18 +101,11 @@ class Command(BaseCommand):
                 raise CommandError("Oscar's default product categories are missing.")
             ProductCategory.objects.get_or_create(product=product, category=category)
 
-            image_path = image_paths.get(self._listing_id(listing_url), "")
             self._save_attribute(
                 ProductAttributeValue,
                 product,
                 attributes.get("one_of_a_kind"),
                 value_boolean="one of a kind" in title.lower(),
-            )
-            self._save_attribute(
-                ProductAttributeValue,
-                product,
-                attributes.get("static_image_path"),
-                value_text=image_path,
             )
             self._save_attribute(
                 ProductAttributeValue,
@@ -138,6 +140,8 @@ class Command(BaseCommand):
                 },
             )
             created += 1
+
+        self._attach_brand_logo(image_manifest)
 
         self.stdout.write(
             self.style.SUCCESS(
@@ -189,24 +193,91 @@ class Command(BaseCommand):
         return parts[1] if len(parts) > 1 and parts[0] == "listing" else ""
 
     @staticmethod
-    def _local_image_paths() -> dict[str, str]:
-        image_dir = Path(settings.BASE_DIR) / "static" / "images" / "products"
-        image_paths: dict[str, str] = {}
-        if not image_dir.is_dir():
-            return image_paths
+    def _read_image_manifest(manifest_path: Path) -> dict:
+        if not manifest_path.is_file():
+            return {"products": {}, "logo": None}
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        return {
+            "products": manifest.get("products", {}),
+            "logo": manifest.get("logo"),
+        }
 
-        for sidecar in image_dir.glob("*.webp.json"):
-            try:
-                metadata = json.loads(sidecar.read_text(encoding="utf-8"))
-            except (OSError, json.JSONDecodeError):
-                continue
-            source_url = LISTING_URL_PATTERN.search(metadata.get("prompt", ""))
-            image_file = sidecar.with_suffix("")
-            if source_url and image_file.is_file():
-                image_paths[Command._listing_id(source_url.group(0))] = (
-                    f"images/products/{image_file.name}"
-                )
-        return image_paths
+    @staticmethod
+    def _attach_product_image(product, listing_url, manifest):
+        image_details = manifest["products"].get(
+            Command._listing_id(listing_url)
+        )
+        if not image_details:
+            return
+
+        asset_id = image_details.get("asset_ulid") or image_details["ulid"]
+        asset, created = ImageAsset.objects.get_or_create(
+            pk=asset_id,
+            defaults={
+                "display_name": image_details["display_name"],
+                "original_name": image_details.get("original_name", ""),
+                "category": ImageAsset.Category.PRODUCT,
+                "visibility": ImageAsset.Visibility.PUBLIC,
+                "public_file": image_details.get(
+                    "asset_storage_name", image_details["storage_name"]
+                ),
+                "source_path": image_details.get("source_path", ""),
+                "content_type": image_details.get("content_type", ""),
+                "size_bytes": image_details.get("size_bytes", 0),
+                "sha256": image_details.get("sha256", ""),
+                "status": ImageAsset.Status.ACTIVE,
+            },
+        )
+        if not created and (
+            asset.public_file.name
+            != image_details.get("asset_storage_name", image_details["storage_name"])
+            or asset.category != ImageAsset.Category.PRODUCT
+        ):
+            raise CommandError(
+                f"Image asset {asset_id} conflicts with the catalog manifest."
+            )
+        ProductImageAsset.objects.update_or_create(
+            product=product,
+            position=0,
+            defaults={
+                "asset": asset,
+                "alt_text": image_details.get("alt_text") or product.title,
+            },
+        )
+
+    def _attach_brand_logo(self, manifest):
+        logo_details = manifest.get("logo")
+        if not logo_details:
+            return
+
+        from wagtail.models import Site
+
+        asset_id = logo_details.get("asset_ulid") or logo_details["ulid"]
+        logo, _ = ImageAsset.objects.get_or_create(
+            pk=asset_id,
+            defaults={
+                "display_name": logo_details["display_name"],
+                "original_name": logo_details.get("original_name", ""),
+                "category": ImageAsset.Category.BRAND,
+                "visibility": ImageAsset.Visibility.PUBLIC,
+                "public_file": logo_details.get(
+                    "asset_storage_name", logo_details["storage_name"]
+                ),
+                "source_path": logo_details.get("source_path", ""),
+                "content_type": logo_details.get("content_type", ""),
+                "size_bytes": logo_details.get("size_bytes", 0),
+                "sha256": logo_details.get("sha256", ""),
+                "status": ImageAsset.Status.ACTIVE,
+            },
+        )
+        if logo.category != ImageAsset.Category.BRAND:
+            raise CommandError("The logo manifest points to a non-brand image asset.")
+        settings_record, _ = BrandSettings.objects.get_or_create(
+            site=Site.objects.get(is_default_site=True)
+        )
+        if settings_record.logo_asset_id != logo.pk:
+            settings_record.logo_asset = logo
+            settings_record.save(update_fields=["logo_asset"])
 
     @staticmethod
     def _category_slug_for(title: str) -> str:

@@ -43,6 +43,8 @@ editorial content. Product purpose and verified brand facts are in
 
 The Oscar/Wagtail boundary is recorded in
 [`docs/adr/0001-oscar-for-commerce-wagtail-for-content.md`](../docs/adr/0001-oscar-for-commerce-wagtail-for-content.md).
+Image identifiers, object access, and deletion lifecycle are recorded in
+[`docs/adr/0002-ulid-image-assets-and-lifecycle.md`](../docs/adr/0002-ulid-image-assets-and-lifecycle.md).
 
 ## Phases
 

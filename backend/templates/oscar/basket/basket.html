@@ -1,20 +1,20 @@
 {% extends "base.html" %}
-{% load static currency_filters image_tags purchase_info_tags %}
+{% load currency_filters purchase_info_tags image_assets %}
 
-{% block title %}Your bag · GrannyCoded{% endblock %}
+{% block title %}Your cart · GrannyCoded{% endblock %}
 
 {% block content %}
 <main id="main-content" class="cart-page">
   <header class="page-intro">
-    <h1>Your bag</h1>
-    <p>Finished pieces are held in your bag while you review them. Stock is confirmed when online checkout opens.</p>
+    <h1>Your cart</h1>
+    <p>Finished pieces stay in your cart while you review them. Stock is confirmed when online checkout opens.</p>
   </header>
 
   {% if basket.is_empty %}
-    <p class="empty-catalog">Your bag is empty. <a href="/shop/">Browse the shop.</a></p>
+    <p class="empty-catalog">Your cart is empty. <a href="/shop/">Browse the shop.</a></p>
   {% else %}
     <div class="cart-layout">
-      <section class="cart-lines" aria-label="Items in your bag">
+      <section class="cart-lines" aria-label="Items in your cart">
         <form method="post" action="{% url 'basket:summary' %}" class="basket-form">
           {% csrf_token %}
           {{ formset.management_form }}
@@ -23,14 +23,18 @@
               <article class="cart-line">
                 {{ form.id }}
                 <a class="cart-line-image" href="{{ product.get_absolute_url }}">
-                  {% with image=product.primary_image %}
-                    {% if image.is_missing and product.attr.static_image_path %}
-                      <img src="{% static product.attr.static_image_path %}" alt="{{ product.attr.image_alt|default:product.get_title }}">
-                    {% elif not image.is_missing %}
-                      {% oscar_thumbnail image.original "240x300" as basket_image %}
-                      <img src="{{ basket_image.url }}" alt="{{ product.attr.image_alt|default:product.get_title }}">
-                    {% endif %}
-                  {% endwith %}
+                  {% primary_product_image product as managed_image %}
+                  {% if managed_image %}
+                    <img src="{{ managed_image.asset.get_url }}" alt="{{ managed_image.alt_text }}" loading="lazy">
+                  {% else %}
+                    {% with image=product.primary_image %}
+                      {% if not image.is_missing %}
+                        <img src="{{ image.original.url }}" alt="{{ product.attr.image_alt|default:product.get_title }}" loading="lazy">
+                      {% else %}
+                        <span class="product-image-placeholder" aria-hidden="true"></span>
+                      {% endif %}
+                    {% endwith %}
+                  {% endif %}
                 </a>
                 <div class="cart-line-copy">
                   <h2><a href="{{ product.get_absolute_url }}">{{ line.description }}</a></h2>
@@ -49,7 +53,7 @@
               </article>
             {% endwith %}
           {% endfor %}
-          <button class="secondary-action" type="submit">Update bag</button>
+          <button class="secondary-action" type="submit">Update cart</button>
         </form>
       </section>
 

@@ -1,8 +1,10 @@
 {% extends "base.html" %}
 {% load i18n %}
 
-{% block title %}Shop · GrannyCoded{% endblock %}
-{% block meta_description %}Finished, one-of-a-kind garments and handmade pieces from GrannyCoded.{% endblock %}
+{% block title %}{{ summary }} | GrannyCoded{% endblock %}
+{% block meta_description %}{{ shop_intro|default:"Shop one-of-a-kind quilt coats, handmade clothing, bags, and keepsakes by GrannyCoded." }}{% endblock %}
+{% block og_title %}{{ summary }} | GrannyCoded{% endblock %}
+{% block og_description %}{{ shop_intro|default:"Shop one-of-a-kind quilt coats, handmade clothing, bags, and keepsakes by GrannyCoded." }}{% endblock %}
 
 {% block content %}
 <main id="main-content" class="shop-page">

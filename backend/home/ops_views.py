@@ -1,11 +1,15 @@
 """Staff workflows that extend Oscar's standard order dashboard."""
 
+import mimetypes
+
 from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
 from django.core.exceptions import ValidationError
+from django.core.files.storage import storages
 from django.db import transaction
+from django.http import FileResponse, Http404
 from django.shortcuts import get_object_or_404, redirect, render
-from django.views.decorators.http import require_http_methods, require_POST
+from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
 from home.forms import (
     CustomOrderCreateForm,
@@ -13,7 +17,7 @@ from home.forms import (
     ManualSaleForm,
     ManualSaleLineFormSet,
 )
-from home.models import CustomOrderInquiry
+from home.models import CustomOrderInquiry, ImageAsset
 from home.services.oscar_orders import (
     InventoryUnavailable,
     create_oscar_order,
@@ -40,6 +44,7 @@ def create_in_person_custom_order(request):
         inquiry = form.save(commit=False)
         inquiry.status = CustomOrderInquiry.Status.ACCEPTED
         inquiry.save()
+        form.save_reference_upload(inquiry)
         try:
             order = create_order_for_custom_inquiry(request, inquiry)
         except ValidationError as exc:
@@ -71,6 +76,57 @@ def custom_order_detail(request, inquiry_id: int):
         "home/dashboard/custom_order_detail.html",
         {"inquiry": inquiry, "form": form},
     )
+
+
+@staff_member_required(login_url="/dashboard/login/")
+@require_GET
+def custom_order_reference_photo(request, inquiry_id: int):
+    inquiry = get_object_or_404(CustomOrderInquiry, pk=inquiry_id)
+    if not inquiry.reference_photo:
+        raise Http404
+
+    try:
+        image_file = inquiry.reference_photo.storage.open(
+            inquiry.reference_photo.name,
+            "rb",
+        )
+    except (FileNotFoundError, OSError):
+        raise Http404 from None
+
+    response = FileResponse(
+        image_file,
+        as_attachment=False,
+        filename=inquiry.reference_photo_name or "reference-image",
+        content_type=mimetypes.guess_type(inquiry.reference_photo_name or "")[0],
+    )
+    response["Cache-Control"] = "private, no-store"
+    response["X-Content-Type-Options"] = "nosniff"
+    return response
+
+
+@staff_member_required(login_url="/dashboard/login/")
+@require_GET
+def private_image_asset(request, asset_id: str):
+    asset = get_object_or_404(
+        ImageAsset,
+        pk=asset_id,
+        visibility=ImageAsset.Visibility.PRIVATE,
+        status=ImageAsset.Status.ACTIVE,
+    )
+    try:
+        image_file = storages["private_images"].open(asset.private_file.name, "rb")
+    except (FileNotFoundError, OSError):
+        raise Http404 from None
+
+    response = FileResponse(
+        image_file,
+        as_attachment=False,
+        filename=asset.display_name,
+        content_type=asset.content_type,
+    )
+    response["Cache-Control"] = "private, no-store"
+    response["X-Content-Type-Options"] = "nosniff"
+    return response
 
 
 @staff_member_required(login_url="/dashboard/login/")

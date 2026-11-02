@@ -1,0 +1,37 @@
+{% extends "oscar/base.html" %}
+
+{% block favicon %}
+  {% if settings.home.BrandSettings.logo_asset %}
+    <link rel="icon" href="{{ settings.home.BrandSettings.logo_asset.get_url }}" type="{{ settings.home.BrandSettings.logo_asset.content_type }}">
+  {% elif settings.home.BrandSettings.logo_image %}
+    <link rel="icon" href="{{ settings.home.BrandSettings.logo_image.file.url }}">
+  {% else %}
+    {{ block.super }}
+  {% endif %}
+{% endblock %}
+
+{% block extrahead %}
+  {{ block.super }}
+  <meta name="robots" content="NONE,NOARCHIVE">
+  {% if settings.home.BrandSettings.logo_asset %}
+    <style>
+      .navbar.navbar-accounts .navbar-brand {
+        background-image: url("{{ settings.home.BrandSettings.logo_asset.get_url }}");
+        background-size: contain;
+        background-position: center;
+      }
+    </style>
+  {% elif settings.home.BrandSettings.logo_image %}
+    <style>
+      .navbar.navbar-accounts .navbar-brand {
+        background-image: url("{{ settings.home.BrandSettings.logo_image.file.url }}");
+        background-size: contain;
+        background-position: center;
+      }
+    </style>
+  {% endif %}
+{% endblock %}
+
+{% block tracking %}
+  {# Oscar dashboard pages do not use site analytics. #}
+{% endblock %}

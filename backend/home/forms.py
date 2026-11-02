@@ -5,25 +5,61 @@ from django.db.models.functions import Coalesce
 from django.forms import formset_factory
 from oscar.core.loading import get_model
 
-from home.models import CustomOrderInquiry
+from home.models import CustomOrderInquiry, ImageAsset
+from home.services.image_assets import save_uploaded_image
 
 
-class CustomOrderInquiryForm(forms.ModelForm):
+class ReferencePhotoUploadMixin:
+    """Store customer reference photos as private ULID-backed image assets."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["reference_upload"] = forms.ImageField(
+            label="Reference photo",
+            required=False,
+        )
+
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+        if commit:
+            instance.save()
+            self.save_m2m()
+            self.save_reference_upload(instance)
+        else:
+            self.save_m2m = self._save_m2m
+        return instance
+
+    def clean_reference_upload(self):
+        image = self.cleaned_data.get("reference_upload")
+        if image and image.size > 5 * 1024 * 1024:
+            raise forms.ValidationError("Reference photos must be 5 MB or smaller.")
+        return image
+
+    def save_reference_upload(self, instance):
+        image = self.cleaned_data.get("reference_upload")
+        if not image:
+            return None
+        asset = save_uploaded_image(
+            image,
+            visibility=ImageAsset.Visibility.PRIVATE,
+            category=ImageAsset.Category.CUSTOM_REFERENCE,
+            display_name=image.name,
+        )
+        instance.reference_asset = asset
+        instance.reference_photo_name = asset.display_name
+        instance.save(update_fields=["reference_asset", "reference_photo_name", "updated_at"])
+        return asset
+
+
+class CustomOrderInquiryForm(ReferencePhotoUploadMixin, forms.ModelForm):
     class Meta:
         model = CustomOrderInquiry
-        fields = ["name", "email", "request_details", "reference_photo"]
+        fields = ["name", "email", "request_details"]
         widgets = {
             "request_details": forms.Textarea(
                 attrs={"rows": 6, "maxlength": 5000}
             )
         }
-
-    def clean_reference_photo(self):
-        image = self.cleaned_data.get("reference_photo")
-        if image and image.size > 5 * 1024 * 1024:
-            raise forms.ValidationError("Reference photos must be 5 MB or smaller.")
-        return image
-
 
 class CustomOrderQuoteForm(forms.ModelForm):
     class Meta:
@@ -68,14 +104,13 @@ class CustomOrderQuoteForm(forms.ModelForm):
         return cleaned_data
 
 
-class CustomOrderCreateForm(forms.ModelForm):
+class CustomOrderCreateForm(ReferencePhotoUploadMixin, forms.ModelForm):
     class Meta:
         model = CustomOrderInquiry
         fields = [
             "name",
             "email",
             "request_details",
-            "reference_photo",
             "quoted_total",
             "quoted_shipping",
             "shipping_note",

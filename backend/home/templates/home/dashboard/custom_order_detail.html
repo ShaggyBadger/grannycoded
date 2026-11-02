@@ -10,8 +10,10 @@
   <section class="inquiry-details" aria-labelledby="request-title">
     <h2 id="request-title">What they asked for</h2>
     <div>{{ inquiry.request_details|linebreaks }}</div>
-    {% if inquiry.reference_photo %}
-      <a href="{{ inquiry.reference_photo.url }}">View reference photo</a>
+    {% if inquiry.reference_asset %}
+      <a href="{{ inquiry.reference_asset.get_url }}">View reference photo: {{ inquiry.reference_asset.display_name }}</a>
+    {% elif inquiry.reference_photo %}
+      <a href="{% url 'custom_order_reference_photo' inquiry_id=inquiry.pk %}">View reference photo{% if inquiry.reference_photo_name %}: {{ inquiry.reference_photo_name }}{% endif %}</a>
     {% endif %}
   </section>
 

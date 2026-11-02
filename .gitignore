@@ -39,6 +39,8 @@ pip-wheel-metadata/
 db.sqlite3
 node_modules/
 /backend/static/css/site.css
+backend/static/images/**/*.avif
+backend/static/images/**/*.webp
 staticfiles/
 media/
 uploads/

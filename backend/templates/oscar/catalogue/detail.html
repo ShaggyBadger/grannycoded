@@ -1,25 +1,36 @@
 {% extends "base.html" %}
-{% load static currency_filters image_tags purchase_info_tags basket_tags %}
+{% load currency_filters purchase_info_tags basket_tags image_assets %}
 
-{% block title %}{{ product.get_title }} · GrannyCoded{% endblock %}
-{% block meta_description %}{{ product.get_meta_description|default:product.get_title }}{% endblock %}
+{% block title %}{{ product.get_title }} | GrannyCoded{% endblock %}
+{% block meta_description %}{{ product.get_meta_description|default:product.description|default:product.get_title|striptags|truncatechars:155 }}{% endblock %}
+{% block og_type %}product{% endblock %}
+{% block og_title %}{{ product.get_title }} | GrannyCoded{% endblock %}
+{% block og_description %}{{ product.get_meta_description|default:product.description|default:product.get_title|striptags|truncatechars:155 }}{% endblock %}
+{% block og_image %}
+  {% primary_product_image product as social_product_image %}
+  {% if social_product_image %}
+    <meta property="og:image" content="{{ social_product_image.asset.get_url }}">
+  {% elif not product.primary_image.is_missing %}
+    <meta property="og:image" content="{{ product.primary_image.original.url }}">
+  {% endif %}
+{% endblock %}
 
 {% block content %}
-{% purchase_info_for_product request product as product_info %}
-<main id="main-content" class="product-page">
-  <div class="product-main-image">
-    {% with image=product.primary_image %}
-      {% if image.is_missing %}
-        {% if product.attr.static_image_path %}
-          <img src="{% static product.attr.static_image_path %}" alt="{{ product.attr.image_alt|default:product.get_title }}">
+  {% purchase_info_for_product request product as product_info %}
+  {% primary_product_image product as managed_image %}
+  <main id="main-content" class="product-page">
+    <div class="product-main-image">
+    {% if managed_image %}
+      <img src="{{ managed_image.asset.get_url }}" alt="{{ managed_image.alt_text }}">
+    {% else %}
+      {% with image=product.primary_image %}
+        {% if not image.is_missing %}
+          <img src="{{ image.original.url }}" alt="{{ product.attr.image_alt|default:product.get_title }}">
         {% else %}
           <span class="product-image-placeholder" aria-hidden="true"></span>
         {% endif %}
-      {% else %}
-        {% oscar_thumbnail image.original "1100x1300" as product_image %}
-        <img src="{{ product_image.url }}" alt="{{ product.attr.image_alt|default:product.get_title }}">
-      {% endif %}
-    {% endwith %}
+      {% endwith %}
+    {% endif %}
   </div>
 
   <article class="product-information">
@@ -47,8 +58,8 @@
         </ul>
       </section>
     {% elif product_info.availability.is_available_to_buy %}
-      {% basket_form request product as basket_form %}
-      <form class="add-to-bag" method="post" action="{% url 'basket:add' pk=product.pk %}">
+      {% basket_form request product quantity_type="multiple" as basket_form %}
+      <form class="add-to-cart" method="post" action="{% url 'basket:add' pk=product.pk %}">
         {% csrf_token %}
         {% for field in basket_form %}
           <div class="form-field">
@@ -58,7 +69,7 @@
           </div>
         {% endfor %}
         <input type="hidden" name="next" value="{{ product.get_absolute_url }}">
-        <button class="primary-action" type="submit">Add to bag</button>
+        <button class="primary-action" type="submit">Add to Cart</button>
       </form>
       <p class="checkout-note">U.S. shipping is included in the listed price. Online payment will open after checkout is ready.</p>
     {% else %}

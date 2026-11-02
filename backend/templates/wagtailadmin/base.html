@@ -1,0 +1,75 @@
+{% extends "wagtailadmin/admin_base.html" %}
+{% load i18n static wagtailadmin_tags wagtailcore_tags %}
+
+{% block branding_title %}GrannyCoded{% endblock %}
+
+{% block branding_favicon %}
+    {% if settings.home.BrandSettings.logo_asset %}
+        <link rel="icon" href="{{ settings.home.BrandSettings.logo_asset.get_url }}" type="{{ settings.home.BrandSettings.logo_asset.content_type }}" />
+    {% elif settings.home.BrandSettings.logo_image %}
+        <link rel="icon" href="{{ settings.home.BrandSettings.logo_image.file.url }}" />
+    {% else %}
+        {{ block.super }}
+    {% endif %}
+{% endblock %}
+
+{% block extra_css %}
+    {{ block.super }}
+    <link rel="stylesheet" href="{% static 'css/wagtail-admin-branding.css' %}" />
+{% endblock %}
+
+{% block furniture %}
+    <template data-wagtail-sidebar-branding-logo>
+        {% block branding_logo %}
+            {% if settings.home.BrandSettings.logo_asset %}
+                <img class="grannycoded-admin-logo" src="{{ settings.home.BrandSettings.logo_asset.get_url }}" alt="" />
+            {% elif settings.home.BrandSettings.logo_image %}
+                <img class="grannycoded-admin-logo" src="{{ settings.home.BrandSettings.logo_image.file.url }}" alt="" />
+            {% endif %}
+        {% endblock %}
+    </template>
+    {% sidebar_props %}
+    <aside id="wagtail-sidebar" class="sidebar-loading" aria-label="{% trans 'Sidebar' %}" data-wagtail-sidebar data-controller="w-kbd" data-w-kbd-key-value="["></aside>
+    {% keyboard_shortcuts_dialog %}
+    <main class="content-wrapper w-overflow-x-hidden" id="main">
+        <div class="content">
+            <div class="messages" role="status" data-controller="w-messages" data-action="w-messages:add@document->w-messages#add w-messages:clear@document->w-messages#clear" data-w-messages-added-class="new" data-w-messages-show-class="appear" data-w-messages-show-delay-value="100">
+                <ul data-w-messages-target="container">
+                    {% if messages %}
+                        {% for message in messages %}
+                            {% message_level_tag message as level_tag %}
+                            <li class="{% message_tags message %}">
+                                {% if level_tag == "error" %}
+                                    {% icon name="warning" classname="messages-icon" %}
+                                {% elif message.extra_tags == "lock" %}
+                                    {% icon name="lock" classname="messages-icon" %}
+                                {% elif message.extra_tags == "unlock" %}
+                                    {% icon name="lock-open" classname="messages-icon" %}
+                                {% else %}
+                                    {% icon name=level_tag classname="messages-icon" %}
+                                {% endif %}
+                                {{ message }}
+                                {% if level_tag == "error" %}
+                                    <button type="button" class="button button-small button-secondary w-hidden w-ml-2.5" data-controller="w-count w-focus" data-action="click->w-focus#focus:prevent wagtail:panel-init@document->w-count#count" data-w-count-active-class="!w-inline-block" data-w-count-find-value=":not([hidden]):is(.error-message,.help-critical)" data-w-focus-target-value=":not([hidden]):is(.error-message,.help-critical)">
+                                        {% trans 'Go to the first error' %}
+                                    </button>
+                                {% endif %}
+                            </li>
+                        {% endfor %}
+                    {% endif %}
+                </ul>
+                <template data-w-messages-target="template" data-type="success">
+                    <li class="success">{% icon name="success" classname="messages-icon" %}<span></span></li>
+                </template>
+                <template data-w-messages-target="template" data-type="error">
+                    <li class="error">{% icon name="warning" classname="messages-icon" %}<span></span></li>
+                </template>
+                <template data-w-messages-target="template" data-type="warning">
+                    <li class="warning">{% icon name="warning" classname="messages-icon" %}<span></span></li>
+                </template>
+            </div>
+
+            {% block content %}{% endblock %}
+        </div>
+    </main>
+{% endblock %}

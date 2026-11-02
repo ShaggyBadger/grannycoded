@@ -40,7 +40,13 @@ class OscarCatalogueView(ListView):
             Product.objects.browsable()
             .exclude(structure=Product.CHILD)
             .select_related("product_class")
-            .prefetch_related("categories", "images", "stockrecords", "children__stockrecords")
+            .prefetch_related(
+                "categories",
+                "images",
+                "managed_images__asset",
+                "stockrecords",
+                "children__stockrecords",
+            )
             .order_by("-priority", "-date_created")
         )
 
@@ -85,7 +91,12 @@ class OscarCategoryView(OscarCatalogueView):
         return queryset
 
 
-ProductDetailView = get_class("catalogue.views", "ProductDetailView")
+OscarProductDetailView = get_class("catalogue.views", "ProductDetailView")
+
+
+class ProductDetailView(OscarProductDetailView):
+    def get_queryset(self):
+        return super().get_queryset().prefetch_related("images", "managed_images__asset")
 
 
 def custom_order_request(request):

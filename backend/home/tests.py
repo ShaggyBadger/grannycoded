@@ -1,17 +1,36 @@
+import json
 from decimal import Decimal
 from io import BytesIO
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from xml.etree import ElementTree
 
+from django.conf import settings
 from django.core.management import call_command
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.contrib.auth import get_user_model
-from django.test import TestCase, override_settings
+from django.test import RequestFactory, TestCase, override_settings
 from django.urls import reverse
+from django.utils import timezone
+from easy_thumbnails.models import Source, Thumbnail
 from PIL import Image
+from wagtail.contrib.redirects.models import Redirect
 from wagtail.models import Site
 
-from home.models import BlogIndexPage, BlogPostPage, CustomOrderInquiry, HomePage
+from home.asset_ids import new_ulid
+from home.management.commands.purge_pending_images import Command as PurgePendingImages
+from home.models import (
+    BlogIndexPage,
+    BlogPostPage,
+    BrandSettings,
+    CustomOrderInquiry,
+    HomePage,
+    ImageAsset,
+    PendingImageDeletion,
+    ProductImageAsset,
+)
+from home.storage import ULIDFileSystemStorage
+from home.wagtail_hooks import BlogPostsMenuItem
 from oscar.core.loading import get_model
 
 
@@ -28,9 +47,28 @@ class StorefrontTests(TestCase):
             slug="wearables"
         )
         self.Product = get_model("catalogue", "Product")
+        self.ProductImage = get_model("catalogue", "ProductImage")
         self.StockRecord = get_model("partner", "StockRecord")
         self.ProductAttribute = get_model("catalogue", "ProductAttribute")
         self.ProductAttributeValue = get_model("catalogue", "ProductAttributeValue")
+
+    def test_uploaded_image_names_are_monotonic_ulids(self):
+        first = new_ulid()
+        second = new_ulid()
+        self.assertRegex(first, r"^[0-9A-HJKMNP-TV-Z]{26}$")
+        self.assertLess(first, second)
+
+        object_name = ULIDFileSystemStorage().get_available_name(
+            "products/original-photo.webp"
+        )
+        self.assertRegex(Path(object_name).stem, r"^[0-9A-HJKMNP-TV-Z]{26}$")
+        thumbnail_name = (
+            "products/01ARZ3NDEKTSV4RRFFQ69G5FAV.webp.70x70_q85.jpg"
+        )
+        self.assertEqual(
+            ULIDFileSystemStorage().get_available_name(thumbnail_name),
+            thumbnail_name,
+        )
 
     def create_product(
         self,
@@ -99,7 +137,93 @@ class StorefrontTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Found quilts. Remade to be worn again.")
         self.assertContains(response, 'href="/shop/"')
+        self.assertContains(response, 'aria-controls="site-nav"')
+        self.assertContains(response, 'id="site-nav"')
+        self.assertContains(response, "static/js/site-navigation.js")
+        self.assertNotContains(response, "Shop one-offs")
         self.assertContains(response, "Mimi Quilt Coat")
+
+    def test_homepage_has_branded_search_metadata_and_optional_verification(self):
+        with override_settings(
+            DEBUG=False,
+            PUBLIC_SITE_URL="https://grannycoded.example",
+            GOOGLE_SITE_VERIFICATION="sample-verification-token",
+        ):
+            response = self.client.get("/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(
+            response,
+            "<title>GrannyCoded | One-of-a-kind quilt clothing</title>",
+            html=False,
+        )
+        self.assertContains(
+            response,
+            '<link rel="canonical" href="https://grannycoded.example/">',
+            html=False,
+        )
+        self.assertContains(
+            response,
+            'name="google-site-verification" content="sample-verification-token"',
+            html=False,
+        )
+        self.assertContains(response, 'name="robots" content="index,follow"', html=False)
+        self.assertNotContains(response, "Welcome to your new Wagtail site")
+        structured_data = (
+            response.content.decode()
+            .split('<script type="application/ld+json">', 1)[1]
+            .split("</script>", 1)[0]
+        )
+        self.assertEqual(json.loads(structured_data)["@graph"][1]["@type"], "WebSite")
+
+    def test_sitemap_includes_live_products_but_not_draft_products(self):
+        public_product = self.create_product()
+        draft_product = self.create_product(
+            slug="unpublished-product",
+            title="Unpublished Product",
+            is_public=False,
+        )
+
+        response = self.client.get("/sitemap.xml")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("application/xml", response["Content-Type"])
+        root = ElementTree.fromstring(response.content)
+        namespace = "{http://www.sitemaps.org/schemas/sitemap/0.9}"
+        locations = {
+            entry.text
+            for entry in root.findall(f"{namespace}url/{namespace}loc")
+        }
+        self.assertIn(f"{settings.PUBLIC_SITE_URL}/", locations)
+        self.assertIn(f"{settings.PUBLIC_SITE_URL}/shop/", locations)
+        self.assertIn(f"{settings.PUBLIC_SITE_URL}/custom-order/", locations)
+        self.assertIn(
+            f"{settings.PUBLIC_SITE_URL}{public_product.get_absolute_url()}",
+            locations,
+        )
+        self.assertNotIn(
+            f"{settings.PUBLIC_SITE_URL}{draft_product.get_absolute_url()}",
+            locations,
+        )
+
+    def test_robots_disallows_local_crawling_and_advertises_production_sitemap(self):
+        with override_settings(DEBUG=True):
+            local_response = self.client.get("/robots.txt")
+        self.assertEqual(local_response.status_code, 200)
+        self.assertContains(local_response, "Disallow: /")
+
+        with override_settings(
+            DEBUG=False,
+            PUBLIC_SITE_URL="https://grannycoded.example",
+        ):
+            production_response = self.client.get("/robots.txt")
+
+        self.assertContains(production_response, "Disallow: /admin/")
+        self.assertContains(production_response, "Allow: /")
+        self.assertContains(
+            production_response,
+            "Sitemap: https://grannycoded.example/sitemap.xml",
+        )
 
     def test_oscar_catalogue_and_product_detail_use_the_brand_templates(self):
         product = self.create_product()
@@ -113,7 +237,8 @@ class StorefrontTests(TestCase):
         detail_response = self.client.get(product.get_absolute_url())
         self.assertEqual(detail_response.status_code, 200)
         self.assertContains(detail_response, product.title)
-        self.assertContains(detail_response, "Add to bag")
+        self.assertContains(detail_response, 'type="number"', html=False)
+        self.assertContains(detail_response, "Add to Cart")
 
     def test_category_and_search_browse_filter_oscar_products(self):
         product = self.create_product()
@@ -132,8 +257,44 @@ class StorefrontTests(TestCase):
 
         self.assertContains(shop_response, "Sold")
         self.assertContains(detail_response, "This piece has sold.")
-        self.assertNotContains(detail_response, "Add to bag")
+        self.assertNotContains(detail_response, "Add to Cart")
         self.assertContains(detail_response, "Ask about custom work")
+
+    def test_deleting_a_product_image_queues_delayed_object_cleanup(self):
+        product = self.create_product()
+        object_name = "products/2026/10/01ARZ3NDEKTSV4RRFFQ69G5FAV.webp"
+        image = self.ProductImage.objects.create(
+            product=product,
+            code="01ARZ3NDEKTSV4RRFFQ69G5FAV",
+            original=object_name,
+            caption=product.title,
+        )
+
+        image.delete()
+
+        pending = PendingImageDeletion.objects.get(
+            storage_alias="default",
+            object_name=object_name,
+        )
+        self.assertGreater(pending.delete_after, timezone.now())
+
+    def test_cleanup_retains_objects_referenced_by_thumbnail_cache(self):
+        source = Source.objects.create(
+            storage_hash="source-storage-hash",
+            name="products/source-image.webp",
+        )
+        Thumbnail.objects.create(
+            storage_hash="thumbnail-storage-hash",
+            name="products/cached-derivative.jpg",
+            source=source,
+        )
+
+        self.assertTrue(
+            PurgePendingImages._file_is_referenced(
+                "default",
+                "products/cached-derivative.jpg",
+            )
+        )
 
     def test_product_description_is_html_escaped(self):
         product = self.create_product()
@@ -178,7 +339,8 @@ class StorefrontTests(TestCase):
         self.assertContains(parent_response, variant.get_absolute_url())
         self.assertContains(variant_response, "Large")
         self.assertContains(variant_response, "$55.00")
-        self.assertContains(variant_response, "Add to bag")
+        self.assertContains(variant_response, 'type="number"', html=False)
+        self.assertContains(variant_response, "Add to Cart")
 
         self.client.post(
             reverse("basket:add", kwargs={"pk": variant.pk}),
@@ -200,39 +362,293 @@ class StorefrontTests(TestCase):
         basket_response = self.client.get(reverse("basket:summary"))
         self.assertEqual(basket_response.status_code, 200)
         self.assertContains(basket_response, product.title)
+        self.assertContains(basket_response, "Cart (")
+        self.assertContains(basket_response, "Your cart")
+        self.assertContains(basket_response, "added to your cart")
         self.assertContains(basket_response, "Checkout opening soon")
 
         checkout_response = self.client.get(reverse("checkout:index"))
         self.assertEqual(checkout_response.status_code, 200)
         self.assertContains(checkout_response, "Online checkout is opening soon.")
+        self.assertContains(checkout_response, "Your cart is still here.")
+        self.assertContains(checkout_response, "Return to your cart")
 
-    def test_journal_pages_render_editorial_content(self):
-        self.assertNotContains(self.client.get("/"), 'href="/journal/"')
-        journal = self.home.add_child(
+    def test_blog_pages_render_editorial_content_and_old_slug_redirects(self):
+        self.assertNotContains(self.client.get("/"), 'href="/blog/"')
+        blog = self.home.add_child(
             instance=BlogIndexPage(
                 title="Journal",
                 slug="journal",
-                intro="Notes from the studio.",
+                intro="Stories about found quilts and one-of-a-kind pieces.",
             )
         )
-        journal.save_revision().publish()
-        post = journal.add_child(
+        blog.save_revision().publish()
+        blog.title = "Blog"
+        blog.slug = "blog"
+        blog.save_revision().publish()
+        Redirect.add_redirect(
+            "/journal/",
+            redirect_to="/blog/",
+            site=Site.objects.get(is_default_site=True),
+        )
+
+        cover = ImageAsset.objects.create(
+            display_name="A found quilt",
+            original_name="found-quilt.webp",
+            category=ImageAsset.Category.EDITORIAL,
+            visibility=ImageAsset.Visibility.PUBLIC,
+            public_file="editorial/01ARZ3NDEKTSV4RRFFQ69G5FAV.webp",
+            content_type="image/webp",
+            status=ImageAsset.Status.ACTIVE,
+        )
+        old_url_response = self.client.get("/journal/")
+        self.assertEqual(old_url_response.status_code, 301)
+        self.assertEqual(old_url_response.url, "/blog/")
+
+        post = blog.add_child(
             instance=BlogPostPage(
                 title="A Quilt Finds a New Life",
                 slug="quilt-new-life",
                 excerpt="A short note about remaking textiles.",
+                cover_asset=cover,
             )
         )
         post.save_revision().publish()
 
-        journal_response = self.client.get("/journal/")
-        post_response = self.client.get("/journal/quilt-new-life/")
+        blog_response = self.client.get("/blog/")
+        post_response = self.client.get("/blog/quilt-new-life/")
 
-        self.assertEqual(journal_response.status_code, 200)
-        self.assertContains(journal_response, post.title)
+        self.assertEqual(blog_response.status_code, 200)
+        self.assertContains(blog_response, post.title)
         self.assertEqual(post_response.status_code, 200)
         self.assertContains(post_response, post.excerpt)
-        self.assertContains(self.client.get("/"), 'href="/journal/"')
+        self.assertContains(
+            post_response,
+            f'<img class="article-cover" src="{cover.get_url()}"',
+            html=False,
+        )
+        home_response = self.client.get("/")
+        self.assertContains(home_response, 'href="/blog/"')
+        self.assertContains(home_response, "Visit the blog")
+
+    def test_blog_posts_admin_menu_opens_the_post_list(self):
+        blog = self.home.add_child(
+            instance=BlogIndexPage(title="Blog", slug="blog")
+        )
+        user = get_user_model().objects.create_user(
+            username="blog-editor",
+            password="test-password",
+            is_staff=True,
+        )
+        request = RequestFactory().get("/admin/")
+        request.user = user
+
+        menu_item = BlogPostsMenuItem()
+
+        self.assertTrue(menu_item.is_shown(request))
+        self.assertEqual(
+            menu_item.url,
+            reverse("wagtailadmin_explore", args=[blog.pk]),
+        )
+
+        request.user.is_staff = False
+        self.assertFalse(menu_item.is_shown(request))
+
+    def test_blog_post_editor_exposes_named_editing_fields(self):
+        blog = self.home.add_child(
+            instance=BlogIndexPage(title="Blog", slug="blog")
+        )
+        cover = ImageAsset.objects.create(
+            display_name="Current quilt cover",
+            original_name="current-cover.jpg",
+            category=ImageAsset.Category.EDITORIAL,
+            visibility=ImageAsset.Visibility.PUBLIC,
+            public_file=f"editorial/{new_ulid()}.jpg",
+            content_type="image/jpeg",
+            status=ImageAsset.Status.ACTIVE,
+        )
+        post = blog.add_child(
+            instance=BlogPostPage(
+                title="A New Life for Found Quilts",
+                slug="a-new-life-for-found-quilts",
+                cover_asset=cover,
+            )
+        )
+        user = get_user_model().objects.create_superuser(
+            username="blog-admin",
+            email="blog-admin@example.com",
+            password="test-password",
+        )
+        self.client.force_login(user)
+
+        response = self.client.get(
+            reverse("wagtailadmin_pages:edit", args=[post.pk])
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Post title")
+        self.assertContains(response, "Short summary")
+        self.assertContains(response, "Post body")
+        self.assertContains(response, "Upload a cover image")
+        self.assertContains(response, 'name="cover_upload"')
+        self.assertContains(response, 'type="file"')
+        self.assertContains(response, 'accept=".jpg,.jpeg,.png,.webp,.avif"')
+        self.assertContains(response, "grannycoded-cover-upload")
+        self.assertContains(response, "up to 20 MB")
+        self.assertContains(response, "Current cover: Current quilt cover.")
+        self.assertNotContains(response, 'name="cover_asset"')
+        self.assertContains(response, "Blog posts")
+        self.assertContains(
+            response,
+            reverse("wagtailadmin_explore", args=[blog.pk]),
+        )
+
+        post_list = self.client.get(
+            reverse("wagtailadmin_explore", args=[blog.pk])
+        )
+        self.assertEqual(post_list.status_code, 200)
+        self.assertContains(post_list, post.title)
+        self.assertContains(
+            post_list,
+            reverse("wagtailadmin_pages:add_subpage", args=[blog.pk]),
+        )
+
+    def test_blog_post_upload_creates_and_links_public_editorial_asset(self):
+        blog = self.home.add_child(
+            instance=BlogIndexPage(title="Blog", slug="blog")
+        )
+        current_cover = ImageAsset.objects.create(
+            display_name="Older cover",
+            original_name="older-cover.jpg",
+            category=ImageAsset.Category.EDITORIAL,
+            visibility=ImageAsset.Visibility.PUBLIC,
+            public_file=f"editorial/{new_ulid()}.jpg",
+            content_type="image/jpeg",
+            status=ImageAsset.Status.ACTIVE,
+        )
+        post = blog.add_child(
+            instance=BlogPostPage(
+                title="A New Life for Found Quilts",
+                slug="a-new-life-for-found-quilts",
+                cover_asset=current_cover,
+            )
+        )
+        user = get_user_model().objects.create_superuser(
+            username="cover-uploader",
+            email="cover-uploader@example.com",
+            password="test-password",
+        )
+        image_bytes = BytesIO()
+        Image.new("RGB", (4, 4), color="olive").save(image_bytes, format="JPEG")
+        uploaded_image = SimpleUploadedFile(
+            "found-quilt.jpg",
+            image_bytes.getvalue(),
+            content_type="image/jpeg",
+        )
+        form_class = BlogPostPage.get_edit_handler().get_form_class()
+        form = form_class(
+            data={
+                "title": post.title,
+                "slug": post.slug,
+                "excerpt": "A story about a found quilt.",
+            },
+            files={"cover_upload": uploaded_image},
+            instance=post,
+            parent_page=blog,
+            for_user=user,
+        )
+        self.assertTrue(form.is_valid(), form.errors)
+
+        with TemporaryDirectory() as storage_dir, override_settings(
+            STORAGES={
+                **settings.STORAGES,
+                "public_images": {
+                    "BACKEND": "django.core.files.storage.FileSystemStorage",
+                    "OPTIONS": {"location": storage_dir},
+                },
+            }
+        ):
+            saved_post = form.save()
+            asset = saved_post.cover_asset
+            saved_post.refresh_from_db()
+
+            self.assertEqual(saved_post.cover_asset_id, asset.pk)
+            self.assertEqual(asset.category, ImageAsset.Category.EDITORIAL)
+            self.assertEqual(asset.visibility, ImageAsset.Visibility.PUBLIC)
+            self.assertEqual(asset.status, ImageAsset.Status.ACTIVE)
+            self.assertEqual(asset.original_name, "found-quilt.jpg")
+            self.assertEqual(len(asset.sha256), 64)
+            self.assertTrue(Path(storage_dir, asset.public_file.name).is_file())
+            current_cover.refresh_from_db()
+            self.assertEqual(
+                current_cover.status,
+                ImageAsset.Status.DELETION_PENDING,
+            )
+
+    def test_blog_post_upload_rejects_invalid_image_content(self):
+        blog = self.home.add_child(
+            instance=BlogIndexPage(title="Blog", slug="blog")
+        )
+        post = blog.add_child(
+            instance=BlogPostPage(
+                title="A New Life for Found Quilts",
+                slug="a-new-life-for-found-quilts",
+            )
+        )
+        user = get_user_model().objects.create_superuser(
+            username="invalid-cover-uploader",
+            email="invalid-cover@example.com",
+            password="test-password",
+        )
+        form_class = BlogPostPage.get_edit_handler().get_form_class()
+        form = form_class(
+            data={"title": post.title, "slug": post.slug},
+            files={
+                "cover_upload": SimpleUploadedFile(
+                    "not-an-image.jpg",
+                    b"not an image",
+                    content_type="image/jpeg",
+                )
+            },
+            instance=post,
+            parent_page=blog,
+            for_user=user,
+        )
+
+        self.assertFalse(form.is_valid())
+        self.assertIn("cover_upload", form.errors)
+        self.assertFalse(ImageAsset.objects.exists())
+
+    def test_blog_index_has_an_empty_state_and_paginates_larger_archives(self):
+        blog = self.home.add_child(
+            instance=BlogIndexPage(
+                title="Blog",
+                slug="blog",
+                intro="Stories about found quilts.",
+            )
+        )
+        blog.save_revision().publish()
+
+        empty_response = self.client.get("/blog/")
+        self.assertContains(empty_response, "The first story is taking shape.")
+
+        for index in range(11):
+            post = blog.add_child(
+                instance=BlogPostPage(
+                    title=f"Quilt story {index + 1}",
+                    slug=f"quilt-story-{index + 1}",
+                    excerpt="A short note about a found textile.",
+                )
+            )
+            post.save_revision().publish()
+
+        first_page = self.client.get("/blog/")
+        second_page = self.client.get("/blog/", {"page": 2})
+
+        self.assertContains(first_page, "Page 1 of 2")
+        self.assertContains(first_page, "More stories")
+        self.assertContains(second_page, "Page 2 of 2")
+        self.assertContains(second_page, "Quilt story 1")
 
     def test_custom_order_request_is_saved_for_wagtail_review(self):
         response = self.client.post(
@@ -265,11 +681,36 @@ class StorefrontTests(TestCase):
                     "name": "Taylor Shopper",
                     "email": "taylor@example.com",
                     "request_details": "A coat inspired by this reference.",
-                    "reference_photo": photo,
+                    "reference_upload": photo,
                 },
             )
             inquiry = CustomOrderInquiry.objects.get()
-            self.assertTrue(inquiry.reference_photo.name.endswith(".jpg"))
+            asset = inquiry.reference_asset
+            self.assertIsNotNone(asset)
+            self.assertRegex(asset.pk, r"^[0-9A-HJKMNP-TV-Z]{26}$")
+            self.assertTrue(asset.private_file.name.endswith(f"{asset.pk}.jpg"))
+            self.assertEqual(asset.display_name, "reference.jpg")
+
+            private_url = reverse("private_image_asset", kwargs={"asset_id": asset.pk})
+            self.assertEqual(self.client.get(private_url).status_code, 302)
+            staff = get_user_model().objects.create_superuser(
+                username="photo-reviewer",
+                email="photo-reviewer@example.com",
+                password="test-password",
+            )
+            self.client.force_login(staff)
+            private_response = self.client.get(private_url)
+            self.assertEqual(private_response.status_code, 200)
+            self.assertEqual(private_response["Cache-Control"], "private, no-store")
+            self.assertEqual(
+                b"".join(private_response.streaming_content),
+                image_bytes.getvalue(),
+            )
+
+            inquiry.delete()
+            asset.refresh_from_db()
+            self.assertEqual(asset.status, ImageAsset.Status.DELETION_PENDING)
+            self.assertGreater(asset.purge_after, timezone.now())
 
         self.assertEqual(response.status_code, 302)
 
@@ -388,6 +829,35 @@ class StorefrontTests(TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertIn("/dashboard/login/", response.url)
 
+    def test_wagtail_admin_home_loads_for_staff(self):
+        asset = ImageAsset.objects.create(
+            display_name="GrannyCoded logo",
+            original_name="logo.avif",
+            category=ImageAsset.Category.BRAND,
+            visibility=ImageAsset.Visibility.PUBLIC,
+            public_file="brand/test-wagtail-logo.avif",
+            content_type="image/avif",
+            status=ImageAsset.Status.ACTIVE,
+        )
+        BrandSettings.objects.update_or_create(
+            site=Site.objects.get(is_default_site=True),
+            defaults={"logo_asset": asset},
+        )
+        staff = get_user_model().objects.create_superuser(
+            username="wagtail-admin",
+            email="admin@example.com",
+            password="test-password",
+        )
+        self.client.force_login(staff)
+
+        response = self.client.get("/admin/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Dashboard - GrannyCoded")
+        self.assertContains(response, asset.get_url())
+        self.assertContains(response, "grannycoded-admin-logo")
+        self.assertContains(response, "css/wagtail-admin-branding.css")
+
     def test_oscar_dashboard_exposes_grannycoded_shop_tools_to_staff(self):
         staff = get_user_model().objects.create_superuser(
             username="shop-manager",
@@ -395,6 +865,10 @@ class StorefrontTests(TestCase):
             password="test-password",
         )
         self.client.force_login(staff)
+
+        home_response = self.client.get("/")
+        self.assertNotContains(home_response, "Record a sale")
+        self.assertNotContains(home_response, "Custom orders")
 
         response = self.client.get(reverse("dashboard:index"))
 
@@ -406,9 +880,61 @@ class StorefrontTests(TestCase):
         self.assertEqual(catalogue_response.status_code, 200)
         self.assertContains(catalogue_response, "Products")
 
+    def test_oscar_dashboard_uses_the_grannycoded_logo_as_its_favicon(self):
+        asset = ImageAsset.objects.create(
+            display_name="GrannyCoded logo",
+            original_name="logo.avif",
+            category=ImageAsset.Category.BRAND,
+            visibility=ImageAsset.Visibility.PUBLIC,
+            public_file="brand/test-logo.avif",
+            content_type="image/avif",
+            status=ImageAsset.Status.ACTIVE,
+        )
+        BrandSettings.objects.update_or_create(
+            site=Site.objects.get(is_default_site=True),
+            defaults={"logo_asset": asset},
+        )
+        staff = get_user_model().objects.create_superuser(
+            username="dashboard-logo-reviewer",
+            email="dashboard-logo@example.com",
+            password="test-password",
+        )
+        self.client.force_login(staff)
+
+        response = self.client.get(reverse("dashboard:index"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(
+            response,
+            f'<link rel="icon" href="{asset.get_url()}" type="image/avif">',
+            html=False,
+        )
+        self.assertContains(
+            response,
+            f'background-image: url("{asset.get_url()}");',
+            html=False,
+        )
+        self.assertNotContains(response, 'href="/static/oscar/favicon.ico"')
+        self.assertNotContains(response, "logo_oscar.png")
+
     def test_catalog_import_creates_private_zero_stock_oscar_drafts_idempotently(self):
-        call_command("import_granny_catalog")
-        call_command("import_granny_catalog")
+        manifest = {
+            "version": 1,
+            "products": {
+                "4602600325": {
+                    "ulid": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+                    "storage_name": "products/01ARZ3NDEKTSV4RRFFQ69G5FAV.webp",
+                    "display_name": "Floral Duster Coat",
+                    "alt_text": "Floral Duster Coat",
+                }
+            },
+            "logo": None,
+        }
+        with TemporaryDirectory() as directory:
+            manifest_path = Path(directory) / "catalog_image_manifest.json"
+            manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+            call_command("import_granny_catalog", "--image-manifest", manifest_path)
+            call_command("import_granny_catalog", "--image-manifest", manifest_path)
 
         product = self.Product.objects.get(slug="floral-duster-coat-vintage-tablecloth")
         stockrecord = self.StockRecord.objects.get(product=product)
@@ -417,7 +943,9 @@ class StorefrontTests(TestCase):
         self.assertEqual(product.priority, 1)
         self.assertEqual(stockrecord.num_in_stock, 0)
         self.assertEqual(stockrecord.price, Decimal("95.00"))
-        self.assertEqual(
-            product.attr.static_image_path,
-            "images/products/floral-duster-coat-vintage-tablecloth.webp",
-        )
+        image = ProductImageAsset.objects.select_related("asset").get(product=product)
+        image_details = manifest["products"]["4602600325"]
+        self.assertEqual(image.asset.pk, image_details["ulid"])
+        self.assertEqual(image.asset.public_file.name, image_details["storage_name"])
+        self.assertEqual(image.asset.display_name, "Floral Duster Coat")
+        self.assertEqual(image.alt_text, "Floral Duster Coat")

@@ -1,19 +1,24 @@
 {% extends "base.html" %}
-{% load static wagtailcore_tags currency_filters purchase_info_tags image_tags %}
+{% load wagtailcore_tags currency_filters purchase_info_tags image_assets %}
+
+{% block title %}{{ page.seo_title|default:"GrannyCoded | One-of-a-kind quilt clothing" }}{% endblock %}
+{% block meta_description %}{{ page.search_description|default:"Shop one-of-a-kind quilt coats, handmade clothing, bags, and keepsakes by GrannyCoded, remade from found quilts and textiles." }}{% endblock %}
+{% block og_title %}{{ page.seo_title|default:"GrannyCoded | One-of-a-kind quilt clothing" }}{% endblock %}
+{% block og_description %}{{ page.search_description|default:"Shop one-of-a-kind quilt coats, handmade clothing, bags, and keepsakes by GrannyCoded, remade from found quilts and textiles." }}{% endblock %}
 
 {% block content %}
 <main id="main-content" class="home-page">
   <section class="found-hero" aria-labelledby="home-title">
     <div class="found-hero-photo">
-      {% if featured_product and featured_product.attr.static_image_path %}
-        <img src="{% static featured_product.attr.static_image_path %}" alt="{{ featured_product.attr.image_alt|default:featured_product.get_title }}">
+      {% primary_product_image featured_product as hero_asset %}
+      {% if hero_asset %}
+        <img src="{{ hero_asset.asset.get_url }}" alt="{{ hero_asset.alt_text }}">
       {% elif featured_product and not featured_product.primary_image.is_missing %}
         {% with image=featured_product.primary_image %}
-          {% oscar_thumbnail image.original "1500x1350" as hero_image %}
-          <img src="{{ hero_image.url }}" alt="{{ featured_product.attr.image_alt|default:featured_product.get_title }}">
+          <img src="{{ image.original.url }}" alt="{{ featured_product.attr.image_alt|default:featured_product.get_title }}">
         {% endwith %}
       {% else %}
-        <img src="{% static 'images/products/floral-duster-coat-vintage-tablecloth.webp' %}" alt="Floral duster coat made from a vintage tablecloth">
+        <span class="product-image-placeholder" aria-hidden="true"></span>
       {% endif %}
       <div class="image-caption">ONE-OF-A-KIND · MADE FROM FOUND TEXTILES</div>
       <div class="source-tag" aria-label="GrannyCoded's quilt-to-garment story">
@@ -35,13 +40,15 @@
         {% for product in shop_preview %}
           <article class="product-preview">
             <a class="product-image-link" href="{{ product.get_absolute_url }}" aria-label="View {{ product.get_title }}">
-              {% if product.attr.static_image_path %}
-                <img src="{% static product.attr.static_image_path %}" alt="{{ product.attr.image_alt|default:product.get_title }}">
+              {% primary_product_image product as managed_image %}
+              {% if managed_image %}
+                <img src="{{ managed_image.asset.get_url }}" alt="{{ managed_image.alt_text }}" loading="lazy">
               {% elif not product.primary_image.is_missing %}
                 {% with image=product.primary_image %}
-                  {% oscar_thumbnail image.original "720x900" as card_image %}
-                  <img src="{{ card_image.url }}" alt="{{ product.attr.image_alt|default:product.get_title }}">
+                  <img src="{{ image.original.url }}" alt="{{ product.attr.image_alt|default:product.get_title }}" loading="lazy">
                 {% endwith %}
+              {% else %}
+                <span class="product-image-placeholder" aria-hidden="true"></span>
               {% endif %}
               {% purchase_info_for_product request product as product_info %}
               <span class="availability-stamp">{% if not product_info.availability.is_available_to_buy %}Sold{% elif product.attr.one_of_a_kind %}One of a kind · available{% else %}{{ product_info.availability.short_message }}{% endif %}</span>
@@ -61,10 +68,19 @@
     <div class="story-copy">
       <h2 id="story-title">{{ page.story_heading }}</h2>
       <p>{{ page.story_copy }}</p>
-      {% if journal_index %}<a class="text-link arrow-link" href="{% pageurl journal_index %}">Read the journal</a>{% endif %}
+        {% if blog_index %}<a class="text-link arrow-link" href="{% pageurl blog_index %}">Read the blog</a>{% endif %}
     </div>
     <figure class="story-detail">
-      <img src="{% static 'images/products/the-mimi-coat-blue-ribbon-winning-quilt.webp' %}" alt="Close view of a one-of-a-kind quilt coat">
+      {% primary_product_image story_product as story_asset %}
+      {% if story_asset %}
+        <img src="{{ story_asset.asset.get_url }}" alt="{{ story_asset.alt_text }}" loading="lazy">
+      {% elif story_product and not story_product.primary_image.is_missing %}
+        {% with image=story_product.primary_image %}
+          <img src="{{ image.original.url }}" alt="{{ story_product.attr.image_alt|default:story_product.get_title }}" loading="lazy">
+        {% endwith %}
+      {% else %}
+        <span class="product-image-placeholder" aria-hidden="true"></span>
+      {% endif %}
       <figcaption>A past life in every pattern.</figcaption>
     </figure>
   </section>
@@ -73,7 +89,7 @@
     <section class="journal-preview section-wrap" aria-labelledby="journal-title">
       <div class="section-heading">
         <h2 id="journal-title">Notes from the making table.</h2>
-        <a class="text-link arrow-link" href="/journal/">Visit the journal</a>
+        <a class="text-link arrow-link" href="/blog/">Visit the blog</a>
       </div>
       <div class="journal-list">
         {% for post in recent_posts %}

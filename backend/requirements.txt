@@ -57,6 +57,7 @@ swapper==1.5.0
 telepath==0.3.1
 typing-inspection==0.4.4
 typing_extensions==4.16.0
+ulid-py==1.1.0
 urllib3==2.8.0
 wagtail==8.0.1
 Willow==1.12.0

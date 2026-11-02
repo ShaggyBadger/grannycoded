@@ -1,29 +1,108 @@
 {% extends "base.html" %}
 {% load wagtailcore_tags wagtailimages_tags %}
 
-{% block title %}{{ page.title }} · GrannyCoded{% endblock %}
-{% block meta_description %}Stories and notes from GrannyCoded's making table.{% endblock %}
+{% block title %}{{ page.seo_title|default:page.title }} | GrannyCoded Blog{% endblock %}
+{% block meta_description %}{{ page.search_description|default:"Stories about found quilts, one-of-a-kind pieces, and the ideas behind GrannyCoded." }}{% endblock %}
+{% block og_title %}{{ page.seo_title|default:page.title }} | GrannyCoded Blog{% endblock %}
+{% block og_description %}{{ page.search_description|default:"Stories about found quilts, one-of-a-kind pieces, and the ideas behind GrannyCoded." }}{% endblock %}
 
 {% block content %}
-<main id="main-content" class="journal-page">
-  <header class="page-intro">
-    <h1>{{ page.title }}</h1>
-    {% if page.intro %}<p>{{ page.intro }}</p>{% endif %}
+<main id="main-content" class="blog-page">
+  <header class="blog-masthead">
+    <h1>Stories from the making table</h1>
+    {% if page.intro %}
+      <p>{{ page.intro }}</p>
+    {% else %}
+      <p>Found quilts, one-of-a-kind pieces, and the details that make each textile different.</p>
+    {% endif %}
   </header>
+
+  {% if featured_post %}
+    <section class="blog-featured" aria-labelledby="featured-story-title">
+      <a class="blog-featured-media" href="{% pageurl featured_post %}" aria-label="Read {{ featured_post.title }}">
+        {% if featured_post.cover_asset %}
+          <img src="{{ featured_post.cover_asset.get_url }}" alt="{{ featured_post.cover_asset.display_name|default:featured_post.title }}">
+        {% elif featured_post.cover_image %}
+          {% image featured_post.cover_image fill-1200x900 class="blog-featured-image" alt=featured_post.title %}
+        {% else %}
+          <span class="blog-image-placeholder" aria-hidden="true"></span>
+        {% endif %}
+      </a>
+      <div class="blog-featured-copy">
+        <h2 id="featured-story-title"><a href="{% pageurl featured_post %}">{{ featured_post.title }}</a></h2>
+        {% if featured_post.excerpt %}<p>{{ featured_post.excerpt }}</p>{% endif %}
+        {% if featured_post.first_published_at %}
+          <time datetime="{{ featured_post.first_published_at|date:'Y-m-d' }}">{{ featured_post.first_published_at|date:'F j, Y' }}</time>
+        {% endif %}
+        <a class="blog-read-link arrow-link" href="{% pageurl featured_post %}">Read the story</a>
+      </div>
+    </section>
+  {% endif %}
+
   {% if posts %}
-    <div class="journal-list">
-      {% for post in posts %}
-        <article>
-          {% if post.first_published_at %}
-            <time datetime="{{ post.first_published_at|date:'Y-m-d' }}">{{ post.first_published_at|date:'F j, Y' }}</time>
-          {% endif %}
-          <h2><a href="{% pageurl post %}">{{ post.title }}</a></h2>
-          {% if post.excerpt %}<p>{{ post.excerpt }}</p>{% endif %}
-        </article>
-      {% endfor %}
-    </div>
-  {% else %}
-    <p class="empty-catalog">No journal entries yet. New notes from the making table will appear here.</p>
+    <section class="blog-stories" aria-labelledby="blog-stories-title">
+      <div class="blog-section-heading">
+        <h2 id="blog-stories-title">More stories</h2>
+      </div>
+      <div class="blog-card-grid">
+        {% for post in posts %}
+          <article class="blog-card">
+            <a class="blog-card-media" href="{% pageurl post %}" aria-label="Read {{ post.title }}">
+              {% if post.cover_asset %}
+                <img src="{{ post.cover_asset.get_url }}" alt="{{ post.cover_asset.display_name|default:post.title }}" loading="lazy">
+              {% elif post.cover_image %}
+                {% image post.cover_image fill-800x600 class="blog-card-image" alt=post.title %}
+              {% else %}
+                <span class="blog-image-placeholder" aria-hidden="true"></span>
+              {% endif %}
+            </a>
+            <div class="blog-card-copy">
+              {% if post.first_published_at %}
+                <time datetime="{{ post.first_published_at|date:'Y-m-d' }}">{{ post.first_published_at|date:'F j, Y' }}</time>
+              {% endif %}
+              <h3><a href="{% pageurl post %}">{{ post.title }}</a></h3>
+              {% if post.excerpt %}<p>{{ post.excerpt }}</p>{% endif %}
+              <a class="blog-card-link" href="{% pageurl post %}">Read story <span aria-hidden="true">→</span></a>
+            </div>
+          </article>
+        {% endfor %}
+      </div>
+    </section>
+  {% elif not featured_post %}
+    <section class="blog-empty" aria-labelledby="blog-empty-title">
+      <h2 id="blog-empty-title">The first story is taking shape.</h2>
+      <p>New notes on found textiles and one-of-a-kind pieces will appear here.</p>
+      <a class="text-link arrow-link" href="/shop/">Explore the shop</a>
+    </section>
+  {% endif %}
+
+  {% if is_paginated %}
+    <nav class="blog-pagination" aria-label="Blog pages">
+      {% if page_obj.has_previous %}
+        <a class="text-link arrow-link" href="?page={{ page_obj.previous_page_number }}" rel="prev">Newer posts</a>
+      {% else %}
+        <span aria-hidden="true"></span>
+      {% endif %}
+      <span class="blog-pagination-count">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+      {% if page_obj.has_next %}
+        <a class="text-link arrow-link" href="?page={{ page_obj.next_page_number }}" rel="next">Older posts</a>
+      {% else %}
+        <span aria-hidden="true"></span>
+      {% endif %}
+    </nav>
+  {% endif %}
+
+  {% if featured_post and not posts and page_obj.number == 1 %}
+    <aside class="blog-next-step" aria-labelledby="blog-next-step-title">
+      <div>
+        <h2 id="blog-next-step-title">Find your next favorite piece.</h2>
+        <p>See the textiles and one-of-a-kind work in the shop, or tell Leah about a custom idea.</p>
+      </div>
+      <nav aria-label="Next steps">
+        <a class="text-link arrow-link" href="/shop/">Explore the shop</a>
+        <a class="text-link arrow-link" href="/custom-order/">Ask about custom work</a>
+      </nav>
+    </aside>
   {% endif %}
 </main>
 {% endblock %}

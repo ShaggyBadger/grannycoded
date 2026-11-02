@@ -34,6 +34,12 @@
       "when_to_read": ["models", "queries", "migrations", "database configuration", "storage configuration", "secrets"]
     },
     {
+      "id": "media-assets-and-storage",
+      "path": "media_assets_and_storage.md",
+      "summary": "Image naming, public/private storage, and object deletion lifecycle.",
+      "when_to_read": ["image assets", "object storage", "media uploads", "asset deletion"]
+    },
+    {
       "id": "testing-and-quality",
       "path": "testing_and_quality.md",
       "summary": "Change-specific tests and Docker-based verification commands.",

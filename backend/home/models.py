@@ -1,12 +1,31 @@
 from decimal import Decimal
+from hashlib import sha256
+import mimetypes
+from pathlib import PurePosixPath
 
+from django.core.exceptions import ValidationError
+from django.core.paginator import Paginator
 from django.core.validators import MinValueValidator
 from django.db import models
 from django.db.models import Prefetch
+from django.urls import reverse
 from wagtail.admin.panels import FieldPanel
 from wagtail.contrib.settings.models import BaseSiteSetting, register_setting
 from wagtail.fields import RichTextField
 from wagtail.models import Page
+
+from home.asset_ids import new_ulid
+from home.storage import PrivateImageStorage, PublicImageStorage
+
+
+def public_image_upload_to(instance, filename: str) -> str:
+    suffix = PurePosixPath(filename).suffix.lower()
+    return f"{instance.category}/{instance.pk}{suffix}"
+
+
+def private_image_upload_to(instance, filename: str) -> str:
+    suffix = PurePosixPath(filename).suffix.lower()
+    return f"custom-order-references/{instance.pk}{suffix}"
 
 
 class HomePage(Page):
@@ -56,6 +75,7 @@ class HomePage(Page):
             .prefetch_related(
                 "stockrecords",
                 "images",
+                "managed_images__asset",
                 Prefetch(
                     "children",
                     queryset=Product.objects.public().prefetch_related("stockrecords"),
@@ -82,6 +102,14 @@ class HomePage(Page):
         available_products = [product for product in products if has_stock(product)]
         context["featured_product"] = available_products[0] if available_products else None
         context["shop_preview"] = available_products[:3]
+        context["story_product"] = next(
+            (
+                product
+                for product in products
+                if product.slug == "the-mimi-coat-blue-ribbon-winning-quilt"
+            ),
+            context["featured_product"],
+        )
         context["recent_posts"] = (
             BlogPostPage.objects.live()
             .order_by("-first_published_at")
@@ -94,7 +122,9 @@ class HomePage(Page):
 
 
 class BlogIndexPage(Page):
-    """Index of maker journal posts."""
+    """Index of GrannyCoded blog posts."""
+
+    POSTS_PER_PAGE = 10
 
     intro = models.TextField(blank=True)
 
@@ -104,13 +134,226 @@ class BlogIndexPage(Page):
 
     def get_context(self, request):
         context = super().get_context(request)
-        context["posts"] = (
+        posts = (
             BlogPostPage.objects.child_of(self)
             .live()
+            .select_related("cover_asset", "cover_image")
             .order_by("-first_published_at")
             .specific()
         )
+        page_obj = Paginator(posts, self.POSTS_PER_PAGE).get_page(
+            request.GET.get("page")
+        )
+        page_posts = list(page_obj.object_list)
+        context["page_obj"] = page_obj
+        context["is_paginated"] = page_obj.has_other_pages()
+        context["featured_post"] = (
+            page_posts[0]
+            if page_obj.number == 1 and page_posts
+            else None
+        )
+        context["posts"] = (
+            page_posts[1:]
+            if page_obj.number == 1 and page_posts
+            else page_posts
+        )
         return context
+
+
+class ImageAsset(models.Model):
+    """A ULID-keyed image with its human-readable name and access class."""
+
+    class Visibility(models.TextChoices):
+        PUBLIC = "public", "Public"
+        PRIVATE = "private", "Private"
+
+    class Category(models.TextChoices):
+        BRAND = "brand", "Brand"
+        PRODUCT = "products", "Product"
+        EDITORIAL = "editorial", "Editorial"
+        CUSTOM_REFERENCE = "custom-order-references", "Custom-order reference"
+
+    class Status(models.TextChoices):
+        UPLOADING = "uploading", "Uploading"
+        ACTIVE = "active", "Active"
+        DELETION_PENDING = "deletion_pending", "Deletion pending"
+        DELETED = "deleted", "Deleted from storage"
+        FAILED = "failed", "Upload failed"
+
+    id = models.CharField(
+        primary_key=True,
+        max_length=26,
+        default=new_ulid,
+        editable=False,
+    )
+    display_name = models.CharField(max_length=255)
+    original_name = models.CharField(max_length=255, blank=True)
+    category = models.CharField(max_length=32, choices=Category.choices)
+    visibility = models.CharField(
+        max_length=8,
+        choices=Visibility.choices,
+        default=Visibility.PUBLIC,
+        db_index=True,
+    )
+    public_file = models.ImageField(
+        upload_to=public_image_upload_to,
+        storage=PublicImageStorage(),
+        blank=True,
+    )
+    private_file = models.ImageField(
+        upload_to=private_image_upload_to,
+        storage=PrivateImageStorage(),
+        blank=True,
+        editable=False,
+    )
+    source_path = models.CharField(max_length=512, blank=True, db_index=True)
+    content_type = models.CharField(max_length=100, blank=True)
+    size_bytes = models.PositiveBigIntegerField(default=0)
+    sha256 = models.CharField(max_length=64, blank=True)
+    status = models.CharField(
+        max_length=20,
+        choices=Status.choices,
+        default=Status.UPLOADING,
+        db_index=True,
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    purge_after = models.DateTimeField(null=True, blank=True, db_index=True)
+    purge_attempts = models.PositiveIntegerField(default=0)
+    last_purge_error = models.CharField(max_length=500, blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["status", "purge_after"]),
+            models.Index(fields=["visibility", "category"]),
+        ]
+
+    def __str__(self) -> str:
+        return self.display_name
+
+    def clean(self):
+        super().clean()
+        if (
+            self.category == self.Category.CUSTOM_REFERENCE
+            and self.visibility != self.Visibility.PRIVATE
+        ):
+            raise ValidationError("Custom-order reference images must remain private.")
+        if (
+            self.category != self.Category.CUSTOM_REFERENCE
+            and self.visibility != self.Visibility.PUBLIC
+        ):
+            raise ValidationError("Brand, product, and editorial images must be public.")
+        if self.visibility == self.Visibility.PUBLIC:
+            if not self.public_file or self.private_file:
+                raise ValidationError("Public assets need a public image file only.")
+        elif not self.private_file or self.public_file:
+            raise ValidationError("Private assets need a private image file only.")
+
+    @property
+    def file(self):
+        return (
+            self.private_file
+            if self.visibility == self.Visibility.PRIVATE
+            else self.public_file
+        )
+
+    def get_url(self) -> str:
+        if self.status != self.Status.ACTIVE:
+            return ""
+        if self.visibility == self.Visibility.PRIVATE:
+            return reverse("private_image_asset", kwargs={"asset_id": self.pk})
+        return self.public_file.url
+
+    def save(self, *args, **kwargs):
+        uploaded = self.file
+        upload_file = uploaded.file if uploaded and not uploaded._committed else None
+        if upload_file:
+            original_name = PurePosixPath(
+                uploaded.name.replace("\\", "/")
+            ).name[:255]
+            self.original_name = self.original_name or original_name
+            self.display_name = self.display_name or original_name
+            self.content_type = (
+                mimetypes.guess_type(original_name)[0]
+                or "application/octet-stream"
+            )
+            self.size_bytes = upload_file.size
+            self.sha256 = _uploaded_file_sha256(upload_file)
+            self.status = self.Status.ACTIVE
+        super().save(*args, **kwargs)
+
+
+def _uploaded_file_sha256(uploaded_file) -> str:
+    try:
+        original_position = uploaded_file.tell()
+    except (AttributeError, OSError):
+        original_position = 0
+    digest = sha256()
+    uploaded_file.seek(0)
+    for chunk in uploaded_file.chunks():
+        digest.update(chunk)
+    uploaded_file.seek(original_position)
+    return digest.hexdigest()
+
+
+class ProductImageAsset(models.Model):
+    """An image linked to an Oscar product, with per-product alternative text."""
+
+    product = models.ForeignKey(
+        "catalogue.Product",
+        on_delete=models.CASCADE,
+        related_name="managed_images",
+    )
+    asset = models.ForeignKey(
+        ImageAsset,
+        on_delete=models.PROTECT,
+        related_name="product_links",
+    )
+    alt_text = models.CharField(max_length=255)
+    position = models.PositiveSmallIntegerField(default=0)
+
+    class Meta:
+        ordering = ["position", "pk"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["product", "position"],
+                name="home_product_image_position_unique",
+            )
+        ]
+
+    def clean(self):
+        super().clean()
+        if self.asset_id and (
+            self.asset.visibility != ImageAsset.Visibility.PUBLIC
+            or self.asset.status != ImageAsset.Status.ACTIVE
+        ):
+            raise ValidationError("Products can only use active public image assets.")
+
+
+class PendingImageDeletion(models.Model):
+    """An object queued for deletion after its recovery grace period."""
+
+    class StorageAlias(models.TextChoices):
+        PUBLIC = "default", "Public image storage"
+        PRIVATE = "private_images", "Private image storage"
+
+    storage_alias = models.CharField(max_length=20, choices=StorageAlias.choices)
+    object_name = models.CharField(max_length=512)
+    delete_after = models.DateTimeField(db_index=True)
+    attempts = models.PositiveIntegerField(default=0)
+    last_error = models.CharField(max_length=500, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    last_attempt_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["storage_alias", "object_name"],
+                name="home_pending_image_delete_unique",
+            )
+        ]
+        ordering = ["delete_after", "pk"]
 
 
 class CustomOrderInquiry(models.Model):
@@ -130,6 +373,15 @@ class CustomOrderInquiry(models.Model):
     reference_photo = models.ImageField(
         upload_to="custom-order-inquiries/%Y/%m/",
         blank=True,
+        storage=PrivateImageStorage(),
+    )
+    reference_photo_name = models.CharField(max_length=255, blank=True)
+    reference_asset = models.ForeignKey(
+        ImageAsset,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="custom_inquiries",
     )
     status = models.CharField(
         max_length=16,
@@ -170,7 +422,7 @@ class CustomOrderInquiry(models.Model):
 
 
 class BlogPostPage(Page):
-    """An article in the GrannyCoded journal."""
+    """An article in the GrannyCoded blog."""
 
     excerpt = models.CharField(max_length=280, blank=True)
     body = RichTextField(blank=True)
@@ -181,14 +433,41 @@ class BlogPostPage(Page):
         on_delete=models.SET_NULL,
         related_name="+",
     )
+    cover_asset = models.ForeignKey(
+        ImageAsset,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="blog_covers",
+    )
 
     parent_page_types = ["home.BlogIndexPage"]
     subpage_types = []
-    content_panels = Page.content_panels + [
-        FieldPanel("excerpt"),
-        FieldPanel("body"),
-        FieldPanel("cover_image"),
+    content_panels = [
+        FieldPanel("title", heading="Post title"),
+        FieldPanel(
+            "excerpt",
+            heading="Short summary",
+            help_text="A brief introduction shown on the blog and search results.",
+        ),
+        FieldPanel(
+            "body",
+            heading="Post body",
+            help_text="Write and format the full story with the toolbar.",
+        ),
+        FieldPanel(
+            "cover_upload",
+            heading="Upload a cover image",
+        ),
     ]
+
+    def clean(self):
+        super().clean()
+        if self.cover_asset_id and (
+            self.cover_asset.visibility != ImageAsset.Visibility.PUBLIC
+            or self.cover_asset.status != ImageAsset.Status.ACTIVE
+        ):
+            raise ValidationError("Blog covers must use active public image assets.")
 
 
 @register_setting
@@ -196,6 +475,20 @@ class BrandSettings(BaseSiteSetting):
     """Site-wide social links and short maker introduction."""
 
     maker_note = models.TextField(blank=True)
+    logo_image = models.ForeignKey(
+        "wagtailimages.Image",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+    )
+    logo_asset = models.ForeignKey(
+        ImageAsset,
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name="brand_settings",
+    )
     instagram_url = models.URLField(blank=True)
     facebook_url = models.URLField(blank=True)
     pinterest_url = models.URLField(blank=True)
@@ -203,8 +496,18 @@ class BrandSettings(BaseSiteSetting):
 
     panels = [
         FieldPanel("maker_note"),
+        FieldPanel("logo_asset"),
+        FieldPanel("logo_image"),
         FieldPanel("instagram_url"),
         FieldPanel("facebook_url"),
         FieldPanel("pinterest_url"),
         FieldPanel("tiktok_url"),
     ]
+
+    def clean(self):
+        super().clean()
+        if self.logo_asset_id and (
+            self.logo_asset.visibility != ImageAsset.Visibility.PUBLIC
+            or self.logo_asset.status != ImageAsset.Status.ACTIVE
+        ):
+            raise ValidationError("The site logo must use an active public image asset.")

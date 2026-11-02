@@ -1,6 +1,7 @@
 """Settings shared by the local Django/Wagtail starter project."""
 
 import os
+import sys
 from pathlib import Path
 
 from django.core.exceptions import ImproperlyConfigured
@@ -56,6 +57,7 @@ ALLOWED_HOSTS = environment_list(
 )
 CSRF_TRUSTED_ORIGINS = environment_list("DJANGO_CSRF_TRUSTED_ORIGINS")
 PUBLIC_SITE_URL = os.environ.get("PUBLIC_SITE_URL", "http://localhost:8000").rstrip("/")
+GOOGLE_SITE_VERIFICATION = os.environ.get("GOOGLE_SITE_VERIFICATION", "").strip()
 CUSTOM_ORDER_NOTIFICATION_EMAIL = os.environ.get(
     "CUSTOM_ORDER_NOTIFICATION_EMAIL", ""
 ).strip()
@@ -88,6 +90,7 @@ INSTALLED_APPS = [
     "django.contrib.flatpages",
     "django.contrib.humanize",
     "oscar.config.Shop",
+    "wagtail.contrib.settings",
     "oscar.apps.analytics.apps.AnalyticsConfig",
     "oscar.apps.checkout.apps.CheckoutConfig",
     "oscar.apps.address.apps.AddressConfig",
@@ -150,6 +153,7 @@ OSCAR_DEFAULT_CURRENCY = "USD"
 OSCAR_HOMEPAGE = "/"
 OSCAR_ALLOW_ANON_CHECKOUT = True
 OSCAR_THUMBNAILER = "oscar.core.thumbnails.EasyThumbnails"
+OSCAR_IMAGE_FOLDER = "products/%Y/%m"
 
 
 def staff_dashboard_access(user, url_name, url_args, url_kwargs):
@@ -171,6 +175,16 @@ OSCAR_DASHBOARD_NAVIGATION += [
             {
                 "label": "Record in-person sale",
                 "url_name": "record_manual_sale",
+                "access_fn": staff_dashboard_access,
+            },
+            {
+                "label": "Manage image assets",
+                "url_name": "admin:home_imageasset_changelist",
+                "access_fn": staff_dashboard_access,
+            },
+            {
+                "label": "Link product images",
+                "url_name": "admin:home_productimageasset_changelist",
                 "access_fn": staff_dashboard_access,
             },
         ],
@@ -202,9 +216,10 @@ HAYSTACK_CONNECTIONS = {
     "default": {"ENGINE": "haystack.backends.simple_backend.SimpleEngine"}
 }
 
+TESTING = "test" in sys.argv
 USE_LINODE_OBJECT_STORAGE = environment_bool(
     "USE_LINODE_OBJECT_STORAGE", default=False
-)
+) and not TESTING
 if USE_LINODE_OBJECT_STORAGE:
     INSTALLED_APPS.append("storages")
 
@@ -236,6 +251,7 @@ TEMPLATES = [
                 "django.contrib.messages.context_processors.messages",
                 "wagtail.contrib.settings.context_processors.settings",
                 "home.context_processors.editorial_navigation",
+                "home.seo.seo_metadata",
                 "oscar.apps.search.context_processors.search_form",
                 "oscar.apps.checkout.context_processors.checkout",
                 "oscar.apps.communication.notifications.context_processors.notifications",
@@ -284,32 +300,68 @@ MEDIA_ROOT = BASE_DIR / "media"
 
 STORAGES = {
     "default": {
-        "BACKEND": "django.core.files.storage.FileSystemStorage",
+        "BACKEND": "home.storage.ULIDFileSystemStorage",
     },
     "staticfiles": {
         "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
     },
+    "public_images": {
+        "BACKEND": "home.storage.ULIDFileSystemStorage",
+        "OPTIONS": {
+            "location": MEDIA_ROOT / "images" / "public",
+            "base_url": f"{MEDIA_URL}images/public/",
+        },
+    },
+    "private_images": {
+        "BACKEND": "home.storage.ULIDFileSystemStorage",
+        "OPTIONS": {
+            "location": MEDIA_ROOT / "images" / "private",
+            "base_url": f"{MEDIA_URL}images/private/",
+        },
+    },
 }
 
 # Linode Object Storage exposes an S3-compatible API; this points the backend at
-# the configured Linode endpoint and does not use AWS-hosted storage.
+# the configured Linode endpoint. Static files remain on the local staticfiles
+# backend; public and private image storages use separate object ACLs.
 if USE_LINODE_OBJECT_STORAGE:
-    LINODE_STORAGE_LOCATION = required_environment("LINODE_STORAGE_LOCATION").strip("/")
+    LINODE_STORAGE_LOCATION = os.environ.get("LINODE_STORAGE_LOCATION", "images/public").strip("/")
+    LINODE_PRIVATE_STORAGE_LOCATION = os.environ.get(
+        "LINODE_PRIVATE_STORAGE_LOCATION", "images/private"
+    ).strip("/")
     if not LINODE_STORAGE_LOCATION:
         raise ImproperlyConfigured("LINODE_STORAGE_LOCATION must name a non-root prefix.")
+    if not LINODE_PRIVATE_STORAGE_LOCATION:
+        raise ImproperlyConfigured("LINODE_PRIVATE_STORAGE_LOCATION must name a non-root prefix.")
 
-    STORAGES["default"] = {
-        "BACKEND": "storages.backends.s3.S3Storage",
+    linode_storage_options = {
+        "access_key": required_environment("LINODE_ACCESS_KEY_ID"),
+        "secret_key": required_environment("LINODE_SECRET_ACCESS_KEY"),
+        "bucket_name": required_environment("LINODE_STORAGE_BUCKET_NAME"),
+        "endpoint_url": required_environment("LINODE_STORAGE_ENDPOINT"),
+        "region_name": required_environment("LINODE_STORAGE_REGION"),
+        "file_overwrite": False,
+    }
+    public_image_storage = {
+        "BACKEND": "home.storage.ULIDS3Storage",
         "OPTIONS": {
-            "access_key": required_environment("LINODE_ACCESS_KEY_ID"),
-            "secret_key": required_environment("LINODE_SECRET_ACCESS_KEY"),
-            "bucket_name": required_environment("LINODE_STORAGE_BUCKET_NAME"),
-            "endpoint_url": required_environment("LINODE_STORAGE_ENDPOINT"),
-            "region_name": required_environment("LINODE_STORAGE_REGION"),
+            **linode_storage_options,
             "location": LINODE_STORAGE_LOCATION,
-            "default_acl": os.environ.get("LINODE_STORAGE_DEFAULT_ACL", "public-read"),
+            "default_acl": os.environ.get(
+                "LINODE_STORAGE_DEFAULT_ACL", "public-read"
+            ),
             "querystring_auth": False,
-            "file_overwrite": False,
+        },
+    }
+    STORAGES["default"] = public_image_storage
+    STORAGES["public_images"] = public_image_storage
+    STORAGES["private_images"] = {
+        "BACKEND": "home.storage.ULIDS3Storage",
+        "OPTIONS": {
+            **linode_storage_options,
+            "location": LINODE_PRIVATE_STORAGE_LOCATION,
+            "default_acl": "private",
+            "querystring_auth": True,
         },
     }
 

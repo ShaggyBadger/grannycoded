@@ -59,9 +59,9 @@ handmade dresses, Bible bags, pouches, and fabric bookmarks.
 - Oscar 4.2 is the commerce framework. It has been checked with this project's
   Django 6.0.9 and Wagtail 8.0.1 versions in Docker; repeat the compatibility
   check when upgrading dependencies.
-- Launch sections are Home, Shop, About/Maker story, Blog when real posts are
-  ready, and a custom-order request form. Show social links only when the maker
-  supplies their URLs.
+- Launch sections are Home, Shop, About/Maker story, Blog, and a custom-order
+  request form. The Blog currently has an introductory post. Show social links
+  only when the maker supplies their URLs.
 - The saved Etsy page contains a 12-listing catalog snapshot. Listing details,
   prices, availability, and photography must be verified before publication;
   imported listings start as drafts.
@@ -86,8 +86,10 @@ handmade dresses, Bible bags, pouches, and fabric bookmarks.
   with initial price references. It is a snapshot, not a source of truth for
   current price or inventory.
 - `BRAND_COLORS.md` and the supplied logo are available as brand assets.
-- No verified testimonials, reviews for reuse, biography, social URLs, or blog
-  articles have been supplied; do not fabricate them.
+- No verified testimonials, reviews for reuse, biography, or social URLs have
+  been supplied. The published introductory blog post uses confirmed brand and
+  catalog information; do not invent personal history or unsupported process
+  claims in future articles.
 
 ## Product Principles
 

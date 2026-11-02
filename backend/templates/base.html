@@ -5,28 +5,79 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#F4EBDD">
-    <meta name="description" content="{% block meta_description %}GrannyCoded transforms found quilts into one-of-a-kind garments and keepsakes.{% endblock %}">
-      <title>{% block title %}{{ page.title|default:"GrannyCoded" }} · GrannyCoded{% endblock %}</title>
+    <meta name="description" content="{% block meta_description %}GrannyCoded transforms found quilts into one-of-a-kind clothing and handmade keepsakes.{% endblock %}">
+    <title>{% block title %}GrannyCoded | One-of-a-kind clothing and handmade keepsakes{% endblock %}</title>
+    <link rel="canonical" href="{{ canonical_url }}">
+    {% if seo_should_noindex %}<meta name="robots" content="noindex,follow">{% else %}<meta name="robots" content="index,follow">{% endif %}
+    {% if google_site_verification %}<meta name="google-site-verification" content="{{ google_site_verification }}">{% endif %}
+    <meta property="og:site_name" content="GrannyCoded">
+    <meta property="og:type" content="{% block og_type %}website{% endblock %}">
+    <meta property="og:title" content="{% block og_title %}GrannyCoded | One-of-a-kind clothing and handmade keepsakes{% endblock %}">
+    <meta property="og:description" content="{% block og_description %}GrannyCoded transforms found quilts into one-of-a-kind clothing and handmade keepsakes.{% endblock %}">
+    <meta property="og:url" content="{{ canonical_url }}">
+    {% block og_image %}
+      {% if settings.home.BrandSettings.logo_asset %}
+        <meta property="og:image" content="{{ settings.home.BrandSettings.logo_asset.get_url }}">
+      {% elif settings.home.BrandSettings.logo_image %}
+        <meta property="og:image" content="{{ settings.home.BrandSettings.logo_image.file.url }}">
+      {% endif %}
+    {% endblock %}
+    <meta name="twitter:card" content="summary_large_image">
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "Organization",
+            "@id": "{{ public_site_url|escapejs }}/#organization",
+            "name": "GrannyCoded",
+            "url": "{{ public_site_url|escapejs }}/"
+            {% if settings.home.BrandSettings.logo_asset %},
+              "logo": "{{ settings.home.BrandSettings.logo_asset.get_url|escapejs }}"
+            {% elif settings.home.BrandSettings.logo_image %},
+              "logo": "{{ settings.home.BrandSettings.logo_image.file.url|escapejs }}"
+            {% endif %}
+          },
+          {
+            "@type": "WebSite",
+            "@id": "{{ public_site_url|escapejs }}/#website",
+            "url": "{{ public_site_url|escapejs }}/",
+            "name": "GrannyCoded",
+            "publisher": {"@id": "{{ public_site_url|escapejs }}/#organization"}
+          }
+        ]
+      }
+    </script>
+    {% if settings.home.BrandSettings.logo_asset %}
+      <link rel="icon" href="{{ settings.home.BrandSettings.logo_asset.get_url }}" type="{{ settings.home.BrandSettings.logo_asset.content_type }}">
+    {% elif settings.home.BrandSettings.logo_image %}
+      <link rel="icon" href="{{ settings.home.BrandSettings.logo_image.file.url }}">
+    {% endif %}
     <link rel="stylesheet" href="{% static 'css/site.css' %}">
   </head>
   <body class="min-h-screen bg-brand-linen text-brand-ink antialiased">
     <a class="skip-link" href="#main-content">Skip to content</a>
     <header class="site-header">
       <a class="site-mark" href="/" aria-label="GrannyCoded home">
-        <img src="{% static 'images/grannycoded_logo.avif' %}" alt="GrannyCoded">
+        {% if settings.home.BrandSettings.logo_asset %}
+          <img src="{{ settings.home.BrandSettings.logo_asset.get_url }}" alt="GrannyCoded">
+        {% elif settings.home.BrandSettings.logo_image %}
+          <img src="{{ settings.home.BrandSettings.logo_image.file.url }}" alt="GrannyCoded">
+        {% else %}
+          <span class="site-mark-text">GrannyCoded</span>
+        {% endif %}
       </a>
-      <nav class="site-nav" aria-label="Main navigation">
+      <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav" data-menu-toggle hidden>
+        <span class="menu-icon" aria-hidden="true"><span></span><span></span><span></span></span>
+        <span data-menu-label>Menu</span>
+      </button>
+      <nav class="site-nav" id="site-nav" aria-label="Main navigation">
         <a href="/shop/">Shop</a>
-          {% if journal_index %}<a href="{% pageurl journal_index %}">Journal</a>{% endif %}
-          <a href="/#about">Our story</a>
-          <a href="/custom-order/">Custom work</a>
-          <a href="/basket/" aria-label="Shopping bag, {{ request.basket.num_items|default:0 }} items">Bag ({{ request.basket.num_items|default:0 }})</a>
+        {% if blog_index %}<a href="{% pageurl blog_index %}">Blog</a>{% endif %}
+        <a href="/#about">Our story</a>
+        <a href="/custom-order/">Custom work</a>
+        <a href="/basket/">Cart ({{ request.basket.num_items|default:0 }})</a>
       </nav>
-      <a class="header-shop-link arrow-link" href="/shop/">Shop one-offs</a>
-      {% if user.is_staff %}
-        <a class="staff-tools-link" href="/dashboard/record-sale/">Record a sale</a>
-        <a class="staff-tools-link" href="/dashboard/custom-orders/">Custom orders</a>
-      {% endif %}
     </header>
 
     {% if messages %}
@@ -44,7 +95,7 @@
       <p>Found textiles, made into something new.</p>
       <nav class="footer-links" aria-label="Footer navigation">
         <a href="/shop/">Shop</a>
-        {% if journal_index %}<a href="{% pageurl journal_index %}">Journal</a>{% endif %}
+        {% if blog_index %}<a href="{% pageurl blog_index %}">Blog</a>{% endif %}
         <a href="/#about">Our story</a>
         {% if settings.home.BrandSettings.instagram_url %}
           <a href="{{ settings.home.BrandSettings.instagram_url }}" target="_blank" rel="noopener noreferrer">Instagram</a>
@@ -61,5 +112,6 @@
       </nav>
       <small>© {% now "Y" %} GrannyCoded</small>
     </footer>
+    <script src="{% static 'js/site-navigation.js' %}" defer></script>
   </body>
 </html>
