@@ -64,7 +64,7 @@ class HomePage(Page):
         FieldPanel("story_copy"),
     ]
 
-    subpage_types = ["home.BlogIndexPage"]
+    subpage_types = ["home.BlogIndexPage", "home.PolicyPage"]
 
     def get_context(self, request):
         context = super().get_context(request)
@@ -162,6 +162,25 @@ class BlogIndexPage(Page):
             else page_posts
         )
         return context
+
+
+class PolicyPage(Page):
+    """Editable customer-facing policy and service-information pages."""
+
+    intro = models.TextField(blank=True)
+    body = RichTextField(blank=True)
+    support_email = models.EmailField(default="grannycoded@gmail.com")
+
+    parent_page_types = ["home.HomePage"]
+    subpage_types = []
+    content_panels = Page.content_panels + [
+        FieldPanel("intro", heading="Introduction"),
+        FieldPanel("body", heading="Policy content"),
+        FieldPanel("support_email", heading="Customer support email"),
+    ]
+
+    class Meta:
+        verbose_name = "policy page"
 
 
 class ImageAsset(models.Model):

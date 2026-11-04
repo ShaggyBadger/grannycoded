@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% load wagtailcore_tags %}
+
+{% block title %}{{ page.seo_title|default:page.title }} | GrannyCoded{% endblock %}
+{% block meta_description %}{{ page.search_description|default:page.intro|default:"Shipping, returns, and custom-order terms for GrannyCoded." }}{% endblock %}
+{% block og_title %}{{ page.seo_title|default:page.title }} | GrannyCoded{% endblock %}
+{% block og_description %}{{ page.search_description|default:page.intro|default:"Shipping, returns, and custom-order terms for GrannyCoded." }}{% endblock %}
+
+{% block content %}
+<main id="main-content" class="article-page policy-page">
+  <header class="article-heading">
+    <h1>{{ page.title }}</h1>
+    {% if page.intro %}<p class="article-excerpt">{{ page.intro }}</p>{% endif %}
+  </header>
+
+  <div class="article-body policy-body">{{ page.body|richtext }}</div>
+
+  {% if page.support_email %}
+    <section class="policy-contact" aria-labelledby="policy-contact-title">
+      {% if page.slug == "privacy" %}
+        <h2 id="policy-contact-title">Questions about your information?</h2>
+        <p>Email <a href="mailto:{{ page.support_email }}">{{ page.support_email }}</a> if you have a privacy question or want to request access to, correction of, or deletion of information you provided. Include enough detail for us to identify the inquiry.</p>
+      {% else %}
+        <h2 id="policy-contact-title">Questions about an order?</h2>
+        <p>Email <a href="mailto:{{ page.support_email }}">{{ page.support_email }}</a>. For a return or order issue, include your order number. For an item that arrived damaged or incorrect, please include photos if you can.</p>
+      {% endif %}
+    </section>
+  {% endif %}
+</main>
+{% endblock %}

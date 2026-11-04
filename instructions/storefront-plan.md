@@ -64,7 +64,7 @@ Image identifiers, object access, and deletion lifecycle are recorded in
    Checkout, invoice integration, and verified/idempotent webhook processing.
    Keep live payments disabled through implementation and test-mode validation.
 5. **Pending — launch readiness and later improvements:** verify product data, shipping
-   economics, tax setup, policies, and domain before enabling live payments.
+   economics, tax setup, published policy terms, and domain before enabling live payments.
    Consider embedded Checkout only after the hosted flow is working.
 
 ## Open decisions and gates
@@ -73,9 +73,12 @@ Image identifiers, object access, and deletion lifecycle are recorded in
   availability, and photos before publication.
 - Confirm free-shipping economics using labor, packaging, postage, and payment
   fees, not material cost alone.
-- Confirm tax configuration and the custom-order return/cancellation policy
-  before enabling live payments. Confirm the existing standard-item policy
-  before publishing it.
+- Shipping & Returns and Privacy pages are published in Wagtail. Review both
+  against applicable local requirements and actual production service providers,
+  and confirm tax configuration before enabling live payments.
+- The Privacy page currently explains that inquiry records do not expire
+  automatically. Choose a retention period and a reliable deletion process
+  before public launch.
 - Configure a notification recipient and mail transport if Leah wants automatic
   emails for new custom-order requests; each request is saved for staff review.
 - Obtain real About copy, blog posts, and social URLs; do not invent them.

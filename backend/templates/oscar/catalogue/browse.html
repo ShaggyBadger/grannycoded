@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load i18n %}
+{% load i18n wagtailcore_tags %}
 
 {% block title %}{{ summary }} | GrannyCoded{% endblock %}
 {% block meta_description %}{{ shop_intro|default:"Shop one-of-a-kind quilt coats, handmade clothing, bags, and keepsakes by GrannyCoded." }}{% endblock %}
@@ -12,7 +12,7 @@
     <p class="eyebrow">Found textiles, made into something new</p>
     <h1>{{ summary }}</h1>
     {% if shop_intro %}<p>{{ shop_intro }}</p>{% endif %}
-    <p>U.S. shipping is included in the listed price.</p>
+    <p>U.S. shipping is included in the listed price. Ready-made orders ship within 3 business days. {% if policy_page %}<a href="{% pageurl policy_page %}">See our Shipping &amp; Returns policy</a>.{% endif %}</p>
   </header>
 
   <nav class="category-filter" aria-label="Shop categories">

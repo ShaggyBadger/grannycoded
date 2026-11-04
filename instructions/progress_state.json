@@ -10,7 +10,9 @@
     "Build Wagtail editorial pages and Oscar catalog, inventory, offline-sale, and custom-order workflows",
     "Have Leah verify and publish appropriate Oscar product drafts",
     "Integrate Stripe-hosted Checkout, invoices, and webhooks after the storefront and launch configuration are ready",
-    "Gate live payments on verified product data, shipping economics, tax setup, policies, and email configuration"
+    "Gate live payments on verified product data, shipping economics, tax setup, policies, and email configuration",
+    "Publish the approved shipping and returns policy as an editable Wagtail page",
+    "Add an editable privacy notice reflecting current inquiry and image handling"
   ],
   "touched_files": [
     "PRODUCT.md",
@@ -80,7 +82,27 @@
     "README.md",
     "backend/README.md",
     "backend/home/migrations/0013_blogpostpagetag_blogpostpage_tags.py",
-    "instructions/completed_tasks/2026-11-02-blog-tags.md"
+    "instructions/completed_tasks/2026-11-02-blog-tags.md",
+    "instructions/completed_tasks/2026-11-02-shipping-returns-policy.md",
+    "PRODUCT.md",
+    "backend/README.md",
+    "backend/home/models.py",
+    "backend/home/context_processors.py",
+    "backend/home/templates/home/policy_page.html",
+    "backend/templates/base.html",
+    "backend/templates/oscar/catalogue/detail.html",
+    "backend/templates/oscar/basket/basket.html",
+    "backend/home/templates/home/custom_order_request.html",
+    "backend/home/templates/home/checkout_unavailable.html",
+    "backend/static-src/css/input.css",
+    "backend/home/tests.py",
+    "backend/home/migrations/0014_policypage.py",
+    "instructions/completed_tasks/2026-11-02-privacy-notice.md",
+    "backend/home/migrations/0015_privacy_page.py",
+    "backend/home/templates/home/custom_order_request.html",
+    "backend/templates/base.html",
+    "backend/README.md",
+    "instructions/storefront-plan.md"
   ],
   "validation": [
     "Oscar 4.2 passes Docker checks/tests with Django 6.0.9 and Wagtail 8.0.1",
@@ -111,11 +133,18 @@
     "Added a Blog posts shortcut to Wagtail and clarified the article editor; all 28 Docker tests, Django checks, migration checks, and UI detection pass",
     "Added a styled blog cover upload that creates and links validated public editorial assets; all 30 Docker tests, Django checks, migration checks, and UI detection pass",
     "Added Wagtail blog tags and non-interactive labels on cards/articles; applied home.0013 and tagged all six local live posts. Filtering and search deferred",
-    "Docker tests, Django checks, makemigrations --check, Tailwind CSS build, and local blog responses pass"
+    "Docker tests, Django checks, makemigrations --check, Tailwind CSS build, and local blog responses pass",
+    "Published an editable Shipping & Returns page at /shipping-returns/ with 3-business-day dispatch, 30-day ready-made returns, custom cancellation terms, and GrannyCoded's contact email",
+    "Shipping & Returns is linked from the shop catalogue, not global navigation; sitemap includes the page",
+    "All 32 Docker tests pass on a fresh test database; Django check, migration checks, Tailwind build, and desktop/mobile Shipping & Returns renders pass",
+    "Added a Wagtail-editable Privacy page at /privacy/ describing inquiry data, private reference photos, essential cookies, service providers, current checkout status, and contact choices",
+    "All 33 Docker tests pass on a fresh test database; Django checks, migration checks, Tailwind build, and desktop/mobile Privacy and custom-order renders pass",
+    "Moved Shipping & Returns link out of global navigation and into the shop catalogue only; all 34 Docker tests pass and desktop/mobile shop renders were inspected"
   ],
   "blockers": [
     "Leah must verify current product data, photos, and stock from the 12-listing snapshot",
-    "Confirm shipping economics, tax configuration, standard-item return policy, and custom-order return policy before live payments",
+    "Review the published Shipping & Returns and Privacy terms against applicable local requirements and actual production service providers before launch",
+    "Choose an inquiry retention period and reliable deletion process; inquiries do not currently expire automatically",
     "Obtain real About copy and social URLs before publishing those sections",
     "Configure custom-order notification email delivery if Leah wants email alerts",
     "Stripe-phase checkout must reject unpublished products still in an existing basket",
@@ -124,6 +153,8 @@
   "next_actions": [
     "Set the production canonical domain and Search Console verification value, then submit /sitemap.xml in Google Search Console",
     "Leah should review the 12 draft products and enter verified stock, photos, and prices before publishing",
-    "Keep payments disabled until Stripe integration and all launch gates are complete"
+    "Keep payments disabled until Stripe integration and all launch gates are complete",
+    "Review the published policy pages against applicable local requirements and actual production service providers before enabling live payments",
+    "Choose an inquiry retention period and deletion process, and confirm actual production hosting, storage, and email providers before deployment"
   ]
 }

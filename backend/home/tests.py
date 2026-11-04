@@ -27,6 +27,7 @@ from home.models import (
     HomePage,
     ImageAsset,
     PendingImageDeletion,
+    PolicyPage,
     ProductImageAsset,
 )
 from home.storage import ULIDFileSystemStorage
@@ -142,6 +143,60 @@ class StorefrontTests(TestCase):
         self.assertContains(response, "static/js/site-navigation.js")
         self.assertNotContains(response, "Shop one-offs")
         self.assertContains(response, "Mimi Quilt Coat")
+        self.assertNotContains(response, "Shipping &amp; Returns", html=False)
+
+    def test_shipping_returns_page_renders_the_approved_customer_terms(self):
+        page = PolicyPage.objects.live().get(slug="shipping-returns")
+
+        response = self.client.get(page.get_url())
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Ready-made orders ship within 3 business days")
+        self.assertContains(response, "30 calendar days of delivery")
+        self.assertContains(response, "unworn other than trying on")
+        self.assertContains(response, "return shipping")
+        self.assertContains(response, "full refund")
+        self.assertContains(response, "materials already purchased")
+        self.assertContains(response, 'href="mailto:grannycoded@gmail.com"', html=False)
+        self.assertNotContains(response, 'href="/shipping-returns/"', html=False)
+
+        editor = get_user_model().objects.create_superuser(
+            username="policy-editor",
+            email="policy-editor@example.com",
+            password="test-password",
+        )
+        self.client.force_login(editor)
+        edit_response = self.client.get(f"/admin/pages/{page.pk}/edit/")
+        self.assertEqual(edit_response.status_code, 200)
+        self.assertContains(edit_response, "Policy content")
+
+    def test_shop_catalogue_links_to_shipping_and_returns_policy(self):
+        policy_page = PolicyPage.objects.live().get(slug="shipping-returns")
+
+        response = self.client.get(reverse("catalogue:index"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "See our Shipping &amp; Returns policy", html=False)
+        self.assertContains(
+            response,
+            f'href="{policy_page.get_url()}"',
+            html=False,
+        )
+
+    def test_privacy_page_explains_current_data_handling_and_is_linked(self):
+        page = PolicyPage.objects.live().get(slug="privacy")
+
+        response = self.client.get(page.get_url())
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "optional reference photo")
+        self.assertContains(response, "stored privately")
+        self.assertContains(response, "do not currently expire automatically")
+        self.assertContains(response, "necessary session and security cookies")
+        self.assertContains(response, "Online checkout is currently disabled")
+        self.assertContains(response, "do not sell personal information")
+        self.assertContains(response, 'href="mailto:grannycoded@gmail.com"', html=False)
+        self.assertContains(response, 'href="/privacy/"', html=False)
 
     def test_homepage_has_branded_search_metadata_and_optional_verification(self):
         with override_settings(
@@ -197,6 +252,8 @@ class StorefrontTests(TestCase):
         self.assertIn(f"{settings.PUBLIC_SITE_URL}/", locations)
         self.assertIn(f"{settings.PUBLIC_SITE_URL}/shop/", locations)
         self.assertIn(f"{settings.PUBLIC_SITE_URL}/custom-order/", locations)
+        self.assertIn(f"{settings.PUBLIC_SITE_URL}/shipping-returns/", locations)
+        self.assertIn(f"{settings.PUBLIC_SITE_URL}/privacy/", locations)
         self.assertIn(
             f"{settings.PUBLIC_SITE_URL}{public_product.get_absolute_url()}",
             locations,
@@ -341,6 +398,7 @@ class StorefrontTests(TestCase):
         self.assertContains(variant_response, "$55.00")
         self.assertContains(variant_response, 'type="number"', html=False)
         self.assertContains(variant_response, "Add to Cart")
+        self.assertNotContains(variant_response, "Shipping and returns details")
 
         self.client.post(
             reverse("basket:add", kwargs={"pk": variant.pk}),
@@ -366,12 +424,14 @@ class StorefrontTests(TestCase):
         self.assertContains(basket_response, "Your cart")
         self.assertContains(basket_response, "added to your cart")
         self.assertContains(basket_response, "Checkout opening soon")
+        self.assertNotContains(basket_response, "Review shipping and returns")
 
         checkout_response = self.client.get(reverse("checkout:index"))
         self.assertEqual(checkout_response.status_code, 200)
         self.assertContains(checkout_response, "Online checkout is opening soon.")
         self.assertContains(checkout_response, "Your cart is still here.")
         self.assertContains(checkout_response, "Return to your cart")
+        self.assertNotContains(checkout_response, "Review shipping and returns")
 
     def test_blog_pages_render_editorial_content_and_old_slug_redirects(self):
         self.assertNotContains(self.client.get("/"), 'href="/blog/"')
@@ -701,7 +761,10 @@ class StorefrontTests(TestCase):
         inquiry = CustomOrderInquiry.objects.get()
         self.assertEqual(inquiry.name, "Taylor Shopper")
         self.assertEqual(inquiry.status, CustomOrderInquiry.Status.NEW)
-        self.assertContains(self.client.get(reverse("custom_order_request")), "Custom work")
+        form_response = self.client.get(reverse("custom_order_request"))
+        self.assertContains(form_response, "Custom work")
+        self.assertNotContains(form_response, "custom-order cancellation terms")
+        self.assertContains(form_response, "privacy notice")
 
     def test_custom_order_request_accepts_an_optional_reference_photo(self):
         image_bytes = BytesIO()

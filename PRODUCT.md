@@ -45,8 +45,10 @@ handmade dresses, Bible bags, pouches, and fabric bookmarks.
   later enhancement. Real payments remain disabled until Stripe payment
   confirmation and launch configuration are complete.
 - Initial online shipping is U.S.-only, with shipping included in regular
-  listing prices as a working policy. Actual costs must be checked before
-  launch; custom-order shipping is quoted per order.
+  listing prices. Ready-made orders ship within 3 business days; custom-order
+  shipping is quoted per order. Actual shipping costs must be checked before
+  launch. The Wagtail-managed Shipping & Returns page states return and
+  cancellation terms.
 - In-person sales and accepted custom orders are intended to be recorded in
   Oscar. Taking products to a fair temporarily removes them from online sale;
   afterward, Leah updates stock and relists unsold pieces. Sold one-offs are
@@ -69,8 +71,9 @@ handmade dresses, Bible bags, pouches, and fabric bookmarks.
 - Guest checkout is allowed; accounts are not required. Online shipped orders
   collect contact and shipping details. In-person sales may be recorded without
   customer details unless a receipt is requested.
-- Leah must verify product details, shipping economics, return policies, tax
-  handling, and final editorial content before live sales.
+- Leah must verify product details, shipping economics, tax handling, and final
+  editorial content before live sales. Review the published Shipping & Returns
+  terms against applicable local requirements before enabling payments.
 
 ## Brand Commitments
 

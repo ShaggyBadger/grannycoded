@@ -1435,6 +1435,42 @@
     line-height: 1.1;
   }
 
+  .policy-body h2 {
+    margin-top: 2.25em;
+    margin-bottom: 0.65em;
+    color: var(--color-brand-olive);
+    font-size: clamp(1.4rem, 2.3vw, 1.8rem);
+    font-weight: 700;
+    line-height: 1.12;
+    letter-spacing: -0.025em;
+  }
+
+  .policy-body h2:first-child {
+    margin-top: 0;
+  }
+
+  .policy-body p + p {
+    margin-top: 0.9rem;
+  }
+
+  .policy-contact {
+    max-width: 68ch;
+    margin-top: clamp(3rem, 7vw, 5rem);
+    padding-top: 1.25rem;
+    border-top: 1px solid color-mix(in srgb, var(--color-brand-olive) 42%, transparent);
+  }
+
+  .policy-contact h2 {
+    margin: 0 0 0.75rem;
+    font-size: clamp(1.5rem, 3vw, 2rem);
+    line-height: 1.1;
+  }
+
+  .policy-contact p {
+    max-width: 65ch;
+    margin: 0;
+  }
+
   .empty-catalog {
     padding-block: 3rem;
     border-top: 1px solid var(--color-brand-moss);

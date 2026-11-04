@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load wagtailcore_tags %}
 
 {% block title %}Custom work · GrannyCoded{% endblock %}
 {% block meta_description %}Tell Leah what you have in mind for a custom GrannyCoded piece.{% endblock %}
@@ -8,7 +9,8 @@
   <header class="page-intro">
     <p class="eyebrow">Made for you</p>
     <h1>Tell us what you're imagining.</h1>
-    <p>Leah will review your idea and follow up with details, timing, and a quote. Nothing is charged until you agree to the quote.</p>
+    <p>Leah will review your idea and follow up with details, timing, and a quote. Nothing is charged until you agree to the quote. Before work begins, you and Leah will confirm the scope, price, shipping, and estimated timing.</p>
+    {% if privacy_page %}<p class="privacy-note">We use your details and any optional reference photo to review and respond to your request. <a href="{% pageurl privacy_page %}">Read our privacy notice</a>.</p>{% endif %}
   </header>
 
   <form class="request-form" method="post" enctype="multipart/form-data">
