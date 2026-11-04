@@ -34,6 +34,7 @@ pip-wheel-metadata/
 .nox/
 
 # Django local state and generated assets
+.pgdata/
 *.sqlite3
 *.sqlite3-*
 db.sqlite3

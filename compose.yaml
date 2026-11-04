@@ -22,7 +22,7 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-website}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Run ./scripts/init.sh first}
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - ./.pgdata:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 5s
@@ -38,5 +38,4 @@ services:
       - backend_node_modules:/app/backend/node_modules
 
 volumes:
-  postgres_data:
   backend_node_modules:
