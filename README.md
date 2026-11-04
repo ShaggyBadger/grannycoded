@@ -61,10 +61,15 @@ docker compose exec web python manage.py test
 docker compose exec web python manage.py makemigrations
 docker compose exec web python manage.py migrate
 docker compose exec web python manage.py import_granny_catalog # Drafts only; Leah verifies before publishing
+docker compose exec web python manage.py oscar_populate_countries --initial-only
 docker compose exec tailwind npm run build:css
 ./scripts/export_initial_database.sh   # One-time initial-content backup + SCP upload
 docker compose down                    # Stop containers; keep the database volume
 ```
+
+`oscar_populate_countries` loads the country list Oscar needs to store shipping
+addresses. `init.sh` runs it on a new database; run it once by hand on an
+existing one.
 
 Django writes rotating logs under `backend/logs/` and sends INFO-and-higher
 output to the container console. The log directory is ignored by Git.
@@ -170,6 +175,35 @@ initial launch, production as the live source afterward, and Wagtail-aware
 selective imports if content must be promoted later. If local development needs
 realistic live data, refresh local from a sanitized production snapshot; never
 push that working copy back over production.
+
+## Payments
+
+Stripe-hosted Checkout handles card payments. The shopper reviews the order at
+`/checkout/`, continues to Stripe's own payment page, and returns to
+`/checkout/complete/` for the confirmation. Card details never reach this
+application; the order is only marked paid when Stripe's signed webhook says so.
+
+Set `STRIPE_PUBLISHABLE_KEY`, `STRIPE_SECRET_KEY`, and `STRIPE_WEBHOOK_SECRET`
+in `.env`, starting with test-mode keys. Checkout stays closed while the secret
+key is blank. Django refuses to start if `STRIPE_LIVE_MODE` and the key's mode
+disagree, so live charges need a deliberate change.
+
+For local testing, forward webhooks with the Stripe CLI:
+
+```bash
+stripe listen --forward-to localhost:8000/checkout/webhook/
+```
+
+It prints a `whsec_...` secret for `STRIPE_WEBHOOK_SECRET`. Pay with test card
+`4242 4242 4242 4242`. In production, add a webhook endpoint in the Stripe
+dashboard pointing at `https://<site>/checkout/webhook/` and subscribe it to
+`checkout.session.completed`, `checkout.session.async_payment_succeeded`,
+`checkout.session.async_payment_failed`, and `checkout.session.expired`.
+
+Stock is reserved when the Stripe page opens and released if the session expires
+(`STRIPE_CHECKOUT_EXPIRY_MINUTES`, 35 by default), so a one-of-a-kind piece
+cannot be sold twice. Details and launch gates are in
+[`instructions/stripe-checkout-plan.md`](instructions/stripe-checkout-plan.md).
 
 ## Tailwind CSS
 

@@ -59,10 +59,10 @@ Image identifiers, object access, and deletion lifecycle are recorded in
 3. **Built — offline and custom-order workflows:** Oscar-linked staff tools
    record in-person sales and turn accepted custom quotes into pending Oscar
    orders. Stripe invoices are intentionally deferred to the payment phase.
-4. **Deferred — payment integration:** after the storefront and product data are
-   ready, add Stripe-hosted
-   Checkout, invoice integration, and verified/idempotent webhook processing.
-   Keep live payments disabled through implementation and test-mode validation.
+4. **In progress — payment integration:** Stripe-hosted Checkout, invoice
+   integration, and verified/idempotent webhook processing. Implementation
+   details are in [`stripe-checkout-plan.md`](stripe-checkout-plan.md); live
+   payments stay disabled through implementation and test-mode validation.
 5. **Pending — launch readiness and later improvements:** verify product data, shipping
    economics, tax setup, published policy terms, and domain before enabling live payments.
    Consider embedded Checkout only after the hosted flow is working.

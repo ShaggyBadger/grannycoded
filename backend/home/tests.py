@@ -158,7 +158,9 @@ class StorefrontTests(TestCase):
         self.assertContains(response, "full refund")
         self.assertContains(response, "materials already purchased")
         self.assertContains(response, 'href="mailto:grannycoded@gmail.com"', html=False)
-        self.assertNotContains(response, 'href="/shipping-returns/"', html=False)
+        # The return policy is linked from the footer so shoppers can find it
+        # before checkout, not only by guessing the URL.
+        self.assertContains(response, 'href="/shipping-returns/"', html=False)
 
         editor = get_user_model().objects.create_superuser(
             username="policy-editor",
@@ -408,7 +410,7 @@ class StorefrontTests(TestCase):
         basket = self.client.get(reverse("basket:summary")).wsgi_request.basket
         self.assertEqual(basket.lines.get().product, variant)
 
-    def test_basket_uses_oscar_lines_and_checkout_is_disabled(self):
+    def test_basket_leads_to_checkout_and_checkout_closes_without_stripe(self):
         product = self.create_product()
         add_response = self.client.post(
             reverse("basket:add", kwargs={"pk": product.pk}),
@@ -423,7 +425,7 @@ class StorefrontTests(TestCase):
         self.assertContains(basket_response, "Cart (")
         self.assertContains(basket_response, "Your cart")
         self.assertContains(basket_response, "added to your cart")
-        self.assertContains(basket_response, "Checkout opening soon")
+        self.assertContains(basket_response, "Continue to checkout")
         self.assertNotContains(basket_response, "Review shipping and returns")
 
         checkout_response = self.client.get(reverse("checkout:index"))

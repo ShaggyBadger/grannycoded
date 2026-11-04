@@ -27,6 +27,9 @@ docker compose up -d --wait db
 printf '%s\n' "Applying database migrations..."
 docker compose run --rm --no-deps web python manage.py migrate
 
+printf '%s\n' "Loading country reference data for shipping addresses..."
+docker compose run --rm --no-deps web python manage.py oscar_populate_countries --initial-only
+
 printf '%s\n' "Starting Django and the Tailwind watcher..."
 docker compose up -d tailwind web
 

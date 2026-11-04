@@ -96,7 +96,9 @@
       <nav class="footer-links" aria-label="Footer navigation">
         <a href="/shop/">Shop</a>
         {% if blog_index %}<a href="{% pageurl blog_index %}">Blog</a>{% endif %}
+        {% if policy_page %}<a href="{% pageurl policy_page %}">Shipping &amp; returns</a>{% endif %}
         {% if privacy_page %}<a href="{% pageurl privacy_page %}">Privacy</a>{% endif %}
+        <a href="{% url 'checkout:payment_security' %}">Payment &amp; security</a>
         <a href="/#about">Our story</a>
         {% if settings.home.BrandSettings.instagram_url %}
           <a href="{{ settings.home.BrandSettings.instagram_url }}" target="_blank" rel="noopener noreferrer">Instagram</a>

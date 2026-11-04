@@ -7,7 +7,7 @@
 <main id="main-content" class="cart-page">
   <header class="page-intro">
     <h1>Your cart</h1>
-    <p>Finished pieces stay in your cart while you review them. Stock is confirmed when online checkout opens.</p>
+    <p>Finished pieces stay in your cart while you review them. Stock is held while you are on the payment page.</p>
   </header>
 
   {% if basket.is_empty %}
@@ -61,7 +61,7 @@
         <h2 id="cart-summary-title">Order summary</h2>
         <p><span>Subtotal</span><span>{% if basket.is_tax_known %}{{ basket.total_incl_tax|currency:basket.currency }}{% else %}{{ basket.total_excl_tax|currency:basket.currency }}{% endif %}</span></p>
         <p class="cart-shipping-note">U.S. shipping is included in listed prices. Ready-made orders ship within 3 business days.</p>
-        <a class="primary-action checkout-action" href="{% url 'checkout:index' %}">Checkout opening soon</a>
+        <a class="primary-action checkout-action" href="{% url 'checkout:index' %}">Continue to checkout</a>
         <a class="text-link arrow-link" href="/shop/">Continue shopping</a>
       </aside>
     </div>

@@ -2,6 +2,8 @@
   "initiative": "Build the GrannyCoded Oscar/Wagtail direct-sales storefront",
   "status": "in_progress",
   "tasks": [
+    "Wire Stripe-hosted Checkout with stock reservation and an idempotent webhook (see instructions/stripe-checkout-plan.md)",
+    "Deploy the site to the Linode server with HTTPS so Stripe webhooks have a public endpoint",
     "Complete technical SEO baseline and prepare site metadata for Google Search Console",
     "Polish the Blog index into a professional responsive editorial homepage",
     "Maintain the Wagtail blog with published editorial content",
@@ -9,7 +11,6 @@
     "Allow blog editors to upload cover images directly from the page editor",
     "Build Wagtail editorial pages and Oscar catalog, inventory, offline-sale, and custom-order workflows",
     "Have Leah verify and publish appropriate Oscar product drafts",
-    "Integrate Stripe-hosted Checkout, invoices, and webhooks after the storefront and launch configuration are ready",
     "Gate live payments on verified product data, shipping economics, tax setup, policies, and email configuration",
     "Publish the approved shipping and returns policy as an editable Wagtail page",
     "Add an editable privacy notice reflecting current inquiry and image handling"
@@ -102,7 +103,18 @@
     "backend/home/templates/home/custom_order_request.html",
     "backend/templates/base.html",
     "backend/README.md",
-    "instructions/storefront-plan.md"
+    "instructions/storefront-plan.md",
+    "instructions/stripe-checkout-plan.md",
+    "backend/home/checkout_views.py",
+    "backend/home/services/stock_reservation.py",
+    "backend/home/services/stripe_checkout.py",
+    "backend/home/test_checkout.py",
+    "backend/home/migrations/0016_checkoutsession_stripeevent_checkoutline_and_more.py",
+    "backend/home/migrations/0017_alter_checkoutsession_stripe_session_id.py",
+    "backend/home/templates/home/checkout_payment.html",
+    "backend/home/templates/home/checkout_complete.html",
+    "backend/home/templates/home/payment_security.html",
+    "scripts/init.sh"
   ],
   "validation": [
     "Oscar 4.2 passes Docker checks/tests with Django 6.0.9 and Wagtail 8.0.1",

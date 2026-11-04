@@ -1384,6 +1384,96 @@
     margin-block: 1.25rem 1.7rem;
   }
 
+  .payment-lines {
+    display: grid;
+  }
+
+  .payment-line {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: start;
+    gap: 1.25rem;
+    padding-block: 1.25rem;
+    border-top: 1px solid var(--color-brand-moss);
+  }
+
+  .payment-line h2 {
+    margin: 0;
+    font-size: 1.05rem;
+    line-height: 1.25;
+  }
+
+  .payment-line h2 a {
+    text-decoration: none;
+  }
+
+  .payment-line p {
+    margin: 0.35rem 0 0;
+    font-size: 0.85rem;
+  }
+
+  .payment-line .payment-line-total {
+    margin: 0;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+
+  .payment-assurance {
+    margin-block: 1.25rem;
+    padding: 1rem 1.1rem;
+    border: 1px solid color-mix(in srgb, var(--color-brand-olive) 45%, transparent);
+    background: color-mix(in srgb, var(--color-brand-linen) 55%, white);
+  }
+
+  .payment-assurance-title {
+    margin: 0 0 0.5rem;
+    font-family: var(--font-label);
+    font-size: 0.72rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .payment-assurance p {
+    margin: 0 0 0.55rem;
+    font-size: 0.82rem;
+    line-height: 1.45;
+  }
+
+  .payment-assurance p:last-child {
+    margin-bottom: 0;
+  }
+
+  .checkout-error {
+    max-width: 60ch;
+    margin-block: 0 1.5rem;
+    padding: 0.85rem 1rem;
+    border-left: 3px solid var(--color-brand-moss);
+    background: color-mix(in srgb, var(--color-brand-gold) 22%, var(--color-brand-linen));
+    font-size: 0.9rem;
+  }
+
+  .checkout-order-number {
+    display: flex;
+    align-items: baseline;
+    gap: 0.9rem;
+    flex-wrap: wrap;
+    padding: 1rem 1.15rem;
+    border: 1px solid var(--color-brand-olive);
+    background: color-mix(in srgb, var(--color-brand-gold) 12%, var(--color-brand-linen));
+  }
+
+  .checkout-order-number span {
+    font-family: var(--font-label);
+    font-size: 0.72rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .checkout-order-number strong {
+    font-size: 1.15rem;
+    letter-spacing: 0.02em;
+  }
+
   .product-status {
     display: inline-block;
     padding: 0.45rem 0.65rem;

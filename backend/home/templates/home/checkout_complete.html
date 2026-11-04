@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% load currency_filters %}
+
+{% block title %}{% if order %}Thank you for your order{% else %}Payment received{% endif %} · GrannyCoded{% endblock %}
+
+{% block content %}
+<main id="main-content" class="checkout-result">
+  {% if order %}
+    <p class="eyebrow">Order confirmed</p>
+    <h1>Thank you.</h1>
+    <p>Your payment went through and your order is in. Write down the order number below in case you need to get in touch.</p>
+    <p class="checkout-order-number"><span>Order number</span><strong>{{ order.number }}</strong></p>
+    <p>You paid {{ order.total_incl_tax|currency:order.currency }}. The charge appears on your statement from Stripe.</p>
+    <p>Pieces are made and packed by hand. Ready-made orders ship within 3 business days. Questions about this order? Reply to your Stripe receipt{% if policy_page %}, or see <a class="text-link" href="{% pageurl policy_page %}">shipping and returns</a>{% endif %}.</p>
+    <a class="primary-action" href="/shop/">Keep browsing</a>
+  {% elif failed %}
+    <p class="eyebrow">Payment not completed</p>
+    <h1>That payment did not go through.</h1>
+    <p>The payment window closed or the charge was declined, so nothing was charged and the items were released back to the shop.</p>
+    <a class="primary-action" href="{% url 'basket:summary' %}">Return to your cart</a>
+  {% else %}
+    <p class="eyebrow">Almost there</p>
+    <h1>We are confirming your payment.</h1>
+    <p>Stripe has accepted the payment and we are waiting for the confirmation to reach us. This usually takes a few seconds. If you do not hear from us, get in touch with the order reference from your Stripe receipt.</p>
+    <a class="primary-action" href="/shop/">Keep browsing</a>
+  {% endif %}
+</main>
+{% endblock %}

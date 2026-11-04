@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+
+{% block title %}Payment &amp; security · GrannyCoded{% endblock %}
+{% block meta_description %}How GrannyCoded takes payments: Stripe processes the card, and GrannyCoded never sees or stores your card number.{% endblock %}
+
+{% block content %}
+<main id="main-content" class="article-page policy-page">
+  <header class="article-heading">
+    <p class="eyebrow">Payment &amp; security</p>
+    <h1>How payments are handled</h1>
+    <p class="article-excerpt">GrannyCoded takes payments through Stripe. Your card details go to Stripe directly, not to this website.</p>
+  </header>
+
+  <div class="article-body policy-body">
+    <h2>What happens when you pay</h2>
+    <p>When you choose to pay, you leave GrannyCoded and continue on Stripe's own payment page. The address bar changes to <strong>checkout.stripe.com</strong> — that is expected, and it is the point: the card form is Stripe's, not ours.</p>
+    <p>You enter your card details there. Apple Pay and Google Pay are also available, so you can pay with your device instead of typing a card number.</p>
+
+    <h2>What GrannyCoded never sees</h2>
+    <p>We never receive, see, or store your full card number or the security code on the back. Those details go from your browser to Stripe. Our servers only receive Stripe's confirmation that a payment succeeded, plus a reference for the charge.</p>
+
+    <h2>What we do keep</h2>
+    <p>To make and ship your order we keep your name, email address, shipping address, and what you bought. We also keep the Stripe reference and amount so we can match a payment to an order, answer questions, and issue a refund if needed.</p>
+
+    <h2>Refunds</h2>
+    <p>Refunds are sent back to the card you paid with through Stripe. They can take several business days to appear, depending on your bank.</p>
+
+    <h2>If something looks wrong</h2>
+    <p>If a payment page looks unfamiliar or asks for anything beyond the usual card details, stop and do not enter your information.{% if policy_page and policy_page.support_email %} Email <a href="mailto:{{ policy_page.support_email }}">{{ policy_page.support_email }}</a> to check before you pay.{% endif %}</p>
+    <p>More about Stripe and how it protects payment data is at <a href="https://stripe.com/docs/security" rel="noopener noreferrer" target="_blank">stripe.com/docs/security</a>.</p>
+  </div>
+</main>
+{% endblock %}

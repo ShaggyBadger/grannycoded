@@ -29,6 +29,7 @@ def create_oscar_order(
     note: str = "",
     payment_method: str = "",
     collect_in_person: bool = False,
+    shipping_address=None,
 ):
     """Place an order, reserve its stock, and optionally record a completed sale."""
     Basket = get_model("basket", "Basket")
@@ -85,6 +86,9 @@ def create_oscar_order(
         )
     shipping_charge = shipping_method.calculate(basket)
     total = OrderTotalCalculator().calculate(basket, shipping_charge)
+    if shipping_address is not None and shipping_address.pk is None:
+        # Oscar's order model needs a saved address to point at.
+        shipping_address.save()
     order = OrderCreator().place_order(
         basket=basket,
         total=total,
@@ -92,6 +96,7 @@ def create_oscar_order(
         shipping_charge=shipping_charge,
         request=request,
         guest_email=customer_email,
+        shipping_address=shipping_address,
     )
 
     basket.status = Basket.SUBMITTED

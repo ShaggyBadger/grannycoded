@@ -544,3 +544,134 @@ class BrandSettings(BaseSiteSetting):
             or self.logo_asset.status != ImageAsset.Status.ACTIVE
         ):
             raise ValidationError("The site logo must use an active public image asset.")
+
+
+class CheckoutSession(models.Model):
+    """A Stripe Checkout attempt, snapshotted from the basket at creation.
+
+    Line prices and titles are stored here so a later catalog edit cannot
+    change what the shopper was shown or what they paid.
+    """
+
+    class Status(models.TextChoices):
+        PENDING = "pending", "Pending payment"
+        PAID = "paid", "Paid"
+        EXPIRED = "expired", "Expired"
+        CANCELLED = "cancelled", "Cancelled"
+        FAILED = "failed", "Failed"
+
+    id = models.CharField(
+        primary_key=True,
+        max_length=26,
+        default=new_ulid,
+        editable=False,
+    )
+    stripe_session_id = models.CharField(
+        max_length=255, unique=True, null=True, blank=True
+    )
+    status = models.CharField(
+        max_length=16,
+        choices=Status.choices,
+        default=Status.PENDING,
+        db_index=True,
+    )
+    email = models.EmailField(blank=True)
+    shipping_name = models.CharField(max_length=255, blank=True)
+    shipping_address = models.JSONField(default=dict, blank=True)
+    currency = models.CharField(max_length=3, default="usd")
+    total_incl_tax = models.DecimalField(
+        max_digits=12, decimal_places=2, default=Decimal("0.00")
+    )
+    order_number = models.CharField(max_length=64, blank=True)
+    expires_at = models.DateTimeField(db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self) -> str:
+        return f"Checkout {self.pk} ({self.get_status_display()})"
+
+    @property
+    def is_open(self) -> bool:
+        return self.status == self.Status.PENDING
+
+
+class CheckoutLine(models.Model):
+    """A snapshotted basket line for one checkout attempt."""
+
+    session = models.ForeignKey(
+        CheckoutSession,
+        on_delete=models.CASCADE,
+        related_name="lines",
+    )
+    product = models.ForeignKey(
+        "catalogue.Product",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="checkout_lines",
+    )
+    product_title = models.CharField(max_length=255)
+    partner_sku = models.CharField(max_length=64, blank=True)
+    quantity = models.PositiveIntegerField()
+    unit_price_incl_tax = models.DecimalField(max_digits=12, decimal_places=2)
+    currency = models.CharField(max_length=3, default="usd")
+
+    class Meta:
+        ordering = ["pk"]
+
+    def __str__(self) -> str:
+        return f"{self.quantity} x {self.product_title}"
+
+    @property
+    def line_total_incl_tax(self) -> Decimal:
+        return self.unit_price_incl_tax * self.quantity
+
+
+class StockReservation(models.Model):
+    """Stock held for an open checkout attempt.
+
+    Available stock is the stock record's balance minus unexpired reservations,
+    so a one-of-a-kind piece cannot be sold twice while a payment page is open.
+    """
+
+    session = models.ForeignKey(
+        CheckoutSession,
+        on_delete=models.CASCADE,
+        related_name="reservations",
+    )
+    product = models.ForeignKey(
+        "catalogue.Product",
+        on_delete=models.CASCADE,
+        related_name="stock_reservations",
+    )
+    quantity = models.PositiveIntegerField()
+    expires_at = models.DateTimeField(db_index=True)
+    released_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["pk"]
+        indexes = [
+            models.Index(fields=["product", "released_at", "expires_at"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.quantity} held for {self.product_id}"
+
+
+class StripeEvent(models.Model):
+    """A received Stripe webhook event, recorded for idempotency."""
+
+    id = models.CharField(primary_key=True, max_length=255)
+    event_type = models.CharField(max_length=128)
+    received_at = models.DateTimeField(auto_now_add=True)
+    processed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-received_at"]
+
+    def __str__(self) -> str:
+        return f"{self.event_type} ({self.pk})"

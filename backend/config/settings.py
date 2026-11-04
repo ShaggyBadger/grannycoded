@@ -72,6 +72,29 @@ EMAIL_BACKEND = os.environ.get(
 if os.environ.get("DEFAULT_FROM_EMAIL"):
     DEFAULT_FROM_EMAIL = os.environ["DEFAULT_FROM_EMAIL"].strip()
 
+# Stripe payments. Checkout stays closed until a secret key is configured, and
+# live charges require an explicit opt-in so a copied production .env cannot
+# silently take real money.
+STRIPE_PUBLISHABLE_KEY = os.environ.get("STRIPE_PUBLISHABLE_KEY", "").strip()
+STRIPE_SECRET_KEY = os.environ.get("STRIPE_SECRET_KEY", "").strip()
+STRIPE_WEBHOOK_SECRET = os.environ.get("STRIPE_WEBHOOK_SECRET", "").strip()
+STRIPE_LIVE_MODE = environment_bool("STRIPE_LIVE_MODE", default=False)
+STRIPE_CURRENCY = os.environ.get("STRIPE_CURRENCY", "usd").strip().lower()
+STRIPE_CHECKOUT_EXPIRY_MINUTES = int(
+    os.environ.get("STRIPE_CHECKOUT_EXPIRY_MINUTES", "35")
+)
+STRIPE_ENABLED = bool(STRIPE_SECRET_KEY)
+if STRIPE_SECRET_KEY.startswith("sk_live_") and not STRIPE_LIVE_MODE:
+    raise ImproperlyConfigured(
+        "STRIPE_SECRET_KEY is a live key but STRIPE_LIVE_MODE is off. Set "
+        "STRIPE_LIVE_MODE=True only after the launch gates in "
+        "instructions/stripe-checkout-plan.md are cleared."
+    )
+if STRIPE_LIVE_MODE and not STRIPE_SECRET_KEY.startswith("sk_live_"):
+    raise ImproperlyConfigured(
+        "STRIPE_LIVE_MODE is on but STRIPE_SECRET_KEY is not a live key."
+    )
+
 if not DEBUG:
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
     SECURE_SSL_REDIRECT = True
