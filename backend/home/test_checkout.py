@@ -114,7 +114,12 @@ class CheckoutPageTests(CheckoutTestBase):
         self.assertContains(response, "Payment handled by Stripe")
         self.assertContains(response, "never sees or stores your card number")
         self.assertContains(response, "Continue to secure payment")
+        self.assertContains(response, 'class="assurance-more arrow-link"')
+        self.assertContains(
+            response, reverse("checkout:payment_security")
+        )
 
+    @override_settings(STRIPE_ENABLED=False, STRIPE_SECRET_KEY="")
     def test_checkout_is_closed_without_stripe_keys(self):
         product = self.create_product()
         self.add_to_basket(product)

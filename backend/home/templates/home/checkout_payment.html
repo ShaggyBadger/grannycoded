@@ -42,7 +42,10 @@
         <p class="payment-assurance-title">Payment handled by Stripe</p>
         <p>GrannyCoded never sees or stores your card number. Stripe processes the payment on its own secure page.</p>
         <p>Apple Pay, Google Pay, and major cards are available there.</p>
-        <p><a class="text-link" href="{% url 'checkout:payment_security' %}">How payments are handled</a></p>
+        <a class="assurance-more arrow-link" href="{% url 'checkout:payment_security' %}">
+          <span class="assurance-more-icon" aria-hidden="true">i</span>
+          <span class="assurance-more-label">How payments are handled</span>
+        </a>
       </div>
 
       {% if stripe_enabled and lines %}

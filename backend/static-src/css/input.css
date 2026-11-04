@@ -1439,8 +1439,56 @@
     line-height: 1.45;
   }
 
-  .payment-assurance p:last-child {
+  .payment-assurance p:last-of-type {
     margin-bottom: 0;
+  }
+
+  .assurance-more {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    margin-top: 0.9rem;
+    padding-top: 0.85rem;
+    border-top: 1px solid
+      color-mix(in srgb, var(--color-brand-olive) 30%, transparent);
+    font-size: 0.84rem;
+    font-weight: 600;
+    text-decoration: none;
+  }
+
+  .assurance-more:hover .assurance-more-label,
+  .assurance-more:focus-visible .assurance-more-label {
+    text-decoration-thickness: 2px;
+  }
+
+  .assurance-more-icon {
+    display: grid;
+    flex: 0 0 auto;
+    place-items: center;
+    width: 1.2rem;
+    height: 1.2rem;
+    border: 1.5px solid currentColor;
+    border-radius: 50%;
+    font-family: var(--font-label);
+    font-size: 0.72rem;
+    font-style: italic;
+    font-weight: 700;
+    line-height: 1;
+    transition:
+      background-color 180ms ease-out,
+      color 180ms ease-out;
+  }
+
+  .assurance-more:hover .assurance-more-icon,
+  .assurance-more:focus-visible .assurance-more-icon {
+    background: currentColor;
+    color: var(--color-brand-linen);
+  }
+
+  .assurance-more-label {
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 0.18em;
   }
 
   .checkout-error {
