@@ -323,3 +323,31 @@ class WebhookTests(CheckoutTestBase):
         session.refresh_from_db()
         self.assertEqual(session.status, CheckoutSession.Status.EXPIRED)
         self.assertEqual(stock_reservation.available_quantity(product), 1)
+
+    @override_settings(**STRIPE_TEST_SETTINGS)
+    def test_confirmation_page_renders_the_order_after_payment(self):
+        product = self.create_product(stock=1)
+        session = self.make_session(product)
+        session.stripe_session_id = "cs_test_1"
+        session.save(update_fields=["stripe_session_id"])
+
+        self.assertEqual(self._post(self._event(session)).status_code, 200)
+        session.refresh_from_db()
+
+        page = self.client.get(
+            reverse("checkout:complete"), {"session_id": "cs_test_1"}
+        )
+
+        self.assertEqual(page.status_code, 200)
+        self.assertContains(page, session.order_number)
+        self.assertContains(page, "Thank you.")
+        self.assertContains(page, "$179.00")
+
+    @override_settings(**STRIPE_TEST_SETTINGS)
+    def test_confirmation_page_tolerates_an_unknown_session(self):
+        page = self.client.get(
+            reverse("checkout:complete"), {"session_id": "cs_test_missing"}
+        )
+
+        self.assertEqual(page.status_code, 200)
+        self.assertContains(page, "We are confirming your payment.")
