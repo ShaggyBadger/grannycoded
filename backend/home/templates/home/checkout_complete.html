@@ -8,10 +8,24 @@
   {% if order %}
     <p class="eyebrow">Order confirmed</p>
     <h1>Thank you.</h1>
-    <p>Your payment went through and your order is in. Write down the order number below in case you need to get in touch.</p>
+    <p>Your payment went through and your order is in.</p>
     <p class="checkout-order-number"><span>Order number</span><strong>{{ order.number }}</strong></p>
+
+    {% if order.email %}
+      <div class="confirmation-callout">
+        <p class="confirmation-callout-title">Check your email</p>
+        <p>We have emailed the details of this order to <strong>{{ order.email }}</strong>. That email is your receipt, and you can reply to it if anything is wrong.</p>
+        <p class="spam-warning"><strong>Don't see it?</strong> Look in your spam or junk folder. If it ended up there, mark it as <em>not spam</em> so the next one arrives in your inbox.</p>
+      </div>
+    {% else %}
+      <div class="confirmation-callout">
+        <p class="confirmation-callout-title">Keep this number</p>
+        <p>Write down the order number above. It is how we will find your order if you get in touch.</p>
+      </div>
+    {% endif %}
+
     <p>You paid {{ order.total_incl_tax|currency:order.currency }}. The charge appears on your statement from Stripe.</p>
-    <p>Pieces are made and packed by hand. Ready-made orders ship within 3 business days. Questions about this order? Reply to your Stripe receipt{% if policy_page %}, or see <a class="text-link" href="{% pageurl policy_page %}">shipping and returns</a>{% endif %}.</p>
+    <p>Pieces are made and packed by hand. Ready-made orders ship within 3 business days. Questions about this order? Reply to the email we sent{% if policy_page %}, or see <a class="text-link" href="{% pageurl policy_page %}">shipping and returns</a>{% endif %}.</p>
     <a class="primary-action" href="/shop/">Keep browsing</a>
   {% elif failed %}
     <p class="eyebrow">Payment not completed</p>

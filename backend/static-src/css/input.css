@@ -1554,6 +1554,40 @@
     letter-spacing: 0.02em;
   }
 
+  .checkout-result .confirmation-callout {
+    margin-block: 1.9rem;
+    padding: 1.35rem 1.5rem;
+    border: 1px solid var(--color-brand-olive);
+    border-left-width: 5px;
+    background: color-mix(in srgb, var(--color-brand-gold) 14%, var(--color-brand-linen));
+  }
+
+  .checkout-result .confirmation-callout p {
+    max-width: 56ch;
+    margin: 0 0 0.7rem;
+  }
+
+  .checkout-result .confirmation-callout p:last-child {
+    margin-bottom: 0;
+  }
+
+  .checkout-result .confirmation-callout-title {
+    margin-bottom: 0.55rem;
+    color: var(--color-brand-olive);
+    font-family: var(--font-label);
+    font-size: 0.76rem;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+  }
+
+  .checkout-result .confirmation-callout .spam-warning {
+    margin-top: 0.85rem;
+    padding-top: 0.8rem;
+    border-top: 1px solid
+      color-mix(in srgb, var(--color-brand-olive) 32%, transparent);
+    font-size: 0.92rem;
+  }
+
   .product-status {
     display: inline-block;
     padding: 0.45rem 0.65rem;

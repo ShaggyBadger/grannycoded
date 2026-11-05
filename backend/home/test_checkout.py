@@ -344,6 +344,9 @@ class WebhookTests(CheckoutTestBase):
         self.assertContains(page, session.order_number)
         self.assertContains(page, "Thank you.")
         self.assertContains(page, "$179.00")
+        self.assertContains(page, "Check your email")
+        self.assertContains(page, "shopper@example.com")
+        self.assertContains(page, "spam or junk folder")
 
     @override_settings(**STRIPE_TEST_SETTINGS)
     def test_confirmation_page_tolerates_an_unknown_session(self):
