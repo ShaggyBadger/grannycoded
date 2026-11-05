@@ -218,6 +218,18 @@ Both need `EMAIL_HOST`, `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD`, and
 while `EMAIL_HOST` is blank. Templates are
 `backend/home/templates/home/email/`.
 
+## Analytics
+
+`base.html` loads the Google Tag Manager container `GTM-WZG3QL5Z`. It is
+deliberately skipped on local development, staff pages, the basket, checkout,
+and search results; the rule lives in `seo_metadata` in
+`backend/home/seo.py`.
+
+**Still to do:** add a **GA4 Configuration** tag inside that container, using
+the property's `G-…` measurement ID and a trigger of *All Pages*. A GTM
+container on its own sends nothing, so the site records no pageviews until that
+tag exists. Confirm it in GA4 → Reports → Realtime after the first deploy.
+
 ## Going live
 
 Run these on the production server. The reasoning behind the payment gates is
@@ -271,7 +283,8 @@ logs the reason, which is the safe failure but looks like a broken shop.
 - [ ] Buy one cheap item with a real card: the order appears in the dashboard,
       both emails arrive, and stock drops
 - [ ] Refund it in Stripe and put the stock back
-- [ ] GA4 realtime shows the visit
+- [ ] GA4 realtime shows the visit — this needs the GA4 Configuration tag in the
+      Tag Manager container first, see [Analytics](#analytics)
 
 If the signing secret is wrong, customers are charged and no order is created.
 Stripe retries failed deliveries for three days, so correcting the secret lets
