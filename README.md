@@ -218,6 +218,69 @@ Both need `EMAIL_HOST`, `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD`, and
 while `EMAIL_HOST` is blank. Templates are
 `backend/home/templates/home/email/`.
 
+## Going live
+
+Run these on the production server. The reasoning behind the payment gates is
+in [`instructions/stripe-checkout-plan.md`](instructions/stripe-checkout-plan.md).
+
+### Before switching Stripe to live
+
+- [ ] The domain resolves to the server and `PUBLIC_SITE_URL` is
+      `https://<domain>`
+- [ ] `DJANGO_DEBUG=False`, and `DJANGO_ALLOWED_HOSTS` and
+      `DJANGO_CSRF_TRUSTED_ORIGINS` name the real domain
+- [ ] `migrate` has run, and `oscar_populate_countries --initial-only` too, or
+      no shipping address can be stored
+- [ ] `collectstatic` and the Tailwind build have run; static files are served
+      by the web server, not by Django
+- [ ] Product details are verified and prices are final
+- [ ] Tax handling is configured and returns and privacy policies are current
+- [ ] `/checkout/` renders over HTTPS
+
+### Switching payments on
+
+A development `.env` keeps the test key and the `stripe listen` secret active,
+with the live values commented out beside them.
+
+- [ ] Comment out the test `STRIPE_SECRET_KEY` and uncomment the live one
+- [ ] Set `STRIPE_LIVE_MODE=True` — the key and the mode must change together
+- [ ] In the Stripe dashboard, create the live webhook destination for
+      `https://<domain>/checkout/webhook/`, subscribed to
+      `checkout.session.completed`, `checkout.session.async_payment_succeeded`,
+      `checkout.session.async_payment_failed`, and `checkout.session.expired`
+- [ ] Uncomment `STRIPE_WEBHOOK_SECRET` and paste **that destination's** signing
+      secret. The `whsec_` printed by `stripe listen` is for local testing only
+      and will reject every live event
+- [ ] Restart the app
+- [ ] Confirm the switch took effect. This must print `mode: LIVE | checkout: True`:
+
+```bash
+docker compose exec web python -c "
+import os,django;os.environ.setdefault('DJANGO_SETTINGS_MODULE','config.settings');django.setup()
+from django.conf import settings as s
+print('mode:', 'LIVE' if s.STRIPE_KEY_IS_LIVE else 'test', '| checkout:', s.STRIPE_ENABLED)"
+```
+
+A mismatch between the key and `STRIPE_LIVE_MODE` leaves checkout closed and
+logs the reason, which is the safe failure but looks like a broken shop.
+
+### Verifying live payments
+
+- [ ] Stripe → Webhooks → the destination → **Send test event** returns `200`,
+      and the log reads `Stripe webhook evt_…: ignored`
+- [ ] Buy one cheap item with a real card: the order appears in the dashboard,
+      both emails arrive, and stock drops
+- [ ] Refund it in Stripe and put the stock back
+- [ ] GA4 realtime shows the visit
+
+If the signing secret is wrong, customers are charged and no order is created.
+Stripe retries failed deliveries for three days, so correcting the secret lets
+the retries recover the order — check the destination's delivery log after any
+launch-day payment anomaly.
+
+To return a development machine to test mode, reverse the two `.env` edits and
+set `STRIPE_LIVE_MODE=False`.
+
 ## Tailwind CSS
 
 The `tailwind` service uses Node in Docker to watch Django templates and write
