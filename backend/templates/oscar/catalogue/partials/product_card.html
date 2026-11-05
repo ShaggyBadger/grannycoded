@@ -23,6 +23,5 @@
     {% if product_info.price.exists %}
       <p>{% if product_info.price.is_tax_known %}{{ product_info.price.incl_tax|currency:product_info.price.currency }}{% else %}{{ product_info.price.excl_tax|currency:product_info.price.currency }}{% endif %}</p>
     {% endif %}
-    {% if product.attr.one_of_a_kind %}<p>One of a kind</p>{% endif %}
   </div>
 </article>

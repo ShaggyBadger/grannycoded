@@ -42,7 +42,11 @@
       </nav>
     {% endif %}
   {% else %}
-    <p class="empty-catalog">The first pieces are being prepared for the shop. Check back soon.</p>
+    {% if search_query %}
+      <p class="empty-catalog">Nothing in the shop matches &ldquo;{{ search_query }}&rdquo;. Try a shorter word, or <a href="{% url 'catalogue:index' %}">see every piece</a>.</p>
+    {% else %}
+      <p class="empty-catalog">The first pieces are being prepared for the shop. Check back soon.</p>
+    {% endif %}
   {% endif %}
 
   <aside class="custom-order-prompt">

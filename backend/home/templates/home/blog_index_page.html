@@ -1,9 +1,9 @@
 {% extends "base.html" %}
 {% load wagtailcore_tags wagtailimages_tags %}
 
-{% block title %}{{ page.seo_title|default:page.title }} | GrannyCoded Blog{% endblock %}
+{% block title %}{{ page.seo_title|default:page.title }} | GrannyCoded{% endblock %}
 {% block meta_description %}{{ page.search_description|default:"Stories about found quilts, one-of-a-kind pieces, and the ideas behind GrannyCoded." }}{% endblock %}
-{% block og_title %}{{ page.seo_title|default:page.title }} | GrannyCoded Blog{% endblock %}
+{% block og_title %}{{ page.seo_title|default:page.title }} | GrannyCoded{% endblock %}
 {% block og_description %}{{ page.search_description|default:"Stories about found quilts, one-of-a-kind pieces, and the ideas behind GrannyCoded." }}{% endblock %}
 
 {% block content %}

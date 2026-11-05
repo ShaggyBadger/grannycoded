@@ -8,6 +8,8 @@
     <meta name="description" content="{% block meta_description %}GrannyCoded transforms found quilts into one-of-a-kind clothing and handmade keepsakes.{% endblock %}">
     <title>{% block title %}GrannyCoded | One-of-a-kind clothing and handmade keepsakes{% endblock %}</title>
     <link rel="canonical" href="{{ canonical_url }}">
+    <link rel="icon" type="image/png" href="{% static 'images/favicon-64.png' %}" sizes="64x64">
+    <link rel="apple-touch-icon" href="{% static 'images/apple-touch-icon.png' %}">
     {% if seo_should_noindex %}<meta name="robots" content="noindex,follow">{% else %}<meta name="robots" content="index,follow">{% endif %}
     {% if google_site_verification %}<meta name="google-site-verification" content="{{ google_site_verification }}">{% endif %}
     <meta property="og:site_name" content="GrannyCoded">
@@ -100,6 +102,9 @@
         {% if privacy_page %}<a href="{% pageurl privacy_page %}">Privacy</a>{% endif %}
         <a href="{% url 'checkout:payment_security' %}">Payment &amp; security</a>
         <a href="/#about">Our story</a>
+        {% if policy_page and policy_page.support_email %}
+          <a href="mailto:{{ policy_page.support_email }}">Email us</a>
+        {% endif %}
         {% if settings.home.BrandSettings.instagram_url %}
           <a href="{{ settings.home.BrandSettings.instagram_url }}" target="_blank" rel="noopener noreferrer">Instagram</a>
         {% endif %}

@@ -149,5 +149,5 @@ def custom_order_request(request):
 
 @require_GET
 def checkout_unavailable(request):
-    """Keep Oscar's checkout endpoint closed until Stripe integration is ready."""
+    """Explain why checkout is closed when Stripe is not configured."""
     return render(request, "home/checkout_unavailable.html", status=200)
