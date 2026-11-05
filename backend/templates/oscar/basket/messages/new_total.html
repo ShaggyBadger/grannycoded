@@ -1,0 +1,20 @@
+{% load i18n currency_filters %}
+{% block message_content %}
+    {% if basket.is_empty %}
+        {% trans "Your cart is now empty" %}
+    {% else %}
+        {% if basket.is_tax_known %}
+            {% blocktrans with total=basket.total_incl_tax|currency:basket.currency %}Your cart total is now <strong>{{ total }}</strong>{% endblocktrans %}
+        {% else %}
+            {% blocktrans with total=basket.total_excl_tax|currency:basket.currency %}Your cart total is now <strong>{{ total }}</strong>{% endblocktrans %}
+        {% endif %}
+    {% endif %}
+{% endblock message_content %}
+
+{% if include_buttons %}
+    {% url 'checkout:index' as checkout_url %}
+    <span class="flash-actions">
+      <a class="primary-action flash-checkout" href="{{ checkout_url }}">{% trans "Checkout" %}</a>
+      <a class="flash-secondary" href="{% url 'basket:summary' %}">{% trans "View cart" %}</a>
+    </span>
+{% endif %}

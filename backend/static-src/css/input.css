@@ -209,6 +209,26 @@
     color: var(--color-brand-ink);
   }
 
+  .flash-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.6rem 1rem;
+    margin-top: 0.85rem;
+  }
+
+  .flash-actions .primary-action {
+    min-height: 44px;
+    padding: 0.65rem 1.3rem;
+    font-size: 0.92rem;
+  }
+
+  .flash-secondary {
+    font-size: 0.88rem;
+    font-weight: 600;
+    text-underline-offset: 0.18em;
+  }
+
   .arrow-link::after {
     display: inline-block;
     width: 0.42em;
@@ -1117,6 +1137,18 @@
   .add-to-cart .form-field {
     display: grid;
     gap: 0.45rem;
+  }
+
+  .add-to-cart-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.7rem;
+  }
+
+  .add-to-cart-actions .primary-action,
+  .add-to-cart-actions .secondary-action {
+    flex: 1 1 12rem;
+    justify-content: center;
   }
 
   .add-to-cart input,

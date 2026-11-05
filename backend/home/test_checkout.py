@@ -407,3 +407,42 @@ class WebhookTests(CheckoutTestBase):
         self.assertTrue(session.order_number)
         Order = get_model("order", "Order")
         self.assertEqual(Order.objects.count(), 1)
+
+
+class AddToCartCtaTests(CheckoutTestBase):
+    @override_settings(**STRIPE_TEST_SETTINGS)
+    def test_product_page_offers_a_direct_checkout_button(self):
+        product = self.create_product()
+
+        page = self.client.get(product.get_absolute_url())
+
+        self.assertEqual(page.status_code, 200)
+        self.assertContains(page, "Add to cart")
+        self.assertContains(page, "Buy it now")
+        self.assertContains(page, 'value="/checkout/"', html=False)
+
+    @override_settings(**STRIPE_TEST_SETTINGS)
+    def test_buy_it_now_lands_on_the_checkout_page(self):
+        product = self.create_product()
+
+        response = self.client.post(
+            reverse("basket:add", kwargs={"pk": product.pk}),
+            {"quantity": 1, "next": reverse("checkout:index")},
+        )
+
+        self.assertRedirects(response, reverse("checkout:index"))
+        page = self.client.get(reverse("checkout:index"))
+        self.assertContains(page, "Mimi Quilt Coat")
+
+    @override_settings(**STRIPE_TEST_SETTINGS)
+    def test_cart_flash_offers_a_checkout_button(self):
+        product = self.create_product()
+
+        response = self.client.post(
+            reverse("basket:add", kwargs={"pk": product.pk}),
+            {"quantity": 1, "next": product.get_absolute_url()},
+        )
+        page = self.client.get(response.headers["Location"])
+
+        self.assertContains(page, 'class="primary-action flash-checkout"', html=False)
+        self.assertContains(page, ">Checkout<", html=False)

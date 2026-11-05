@@ -297,7 +297,7 @@ class StorefrontTests(TestCase):
         self.assertEqual(detail_response.status_code, 200)
         self.assertContains(detail_response, product.title)
         self.assertContains(detail_response, 'type="number"', html=False)
-        self.assertContains(detail_response, "Add to Cart")
+        self.assertContains(detail_response, "Add to cart")
 
     def test_category_and_search_browse_filter_oscar_products(self):
         product = self.create_product()
@@ -316,7 +316,7 @@ class StorefrontTests(TestCase):
 
         self.assertContains(shop_response, "Sold")
         self.assertContains(detail_response, "This piece has sold.")
-        self.assertNotContains(detail_response, "Add to Cart")
+        self.assertNotContains(detail_response, "Add to cart")
         self.assertContains(detail_response, "Ask about custom work")
 
     def test_deleting_a_product_image_queues_delayed_object_cleanup(self):
@@ -399,7 +399,7 @@ class StorefrontTests(TestCase):
         self.assertContains(variant_response, "Large")
         self.assertContains(variant_response, "$55.00")
         self.assertContains(variant_response, 'type="number"', html=False)
-        self.assertContains(variant_response, "Add to Cart")
+        self.assertContains(variant_response, "Add to cart")
         self.assertNotContains(variant_response, "Shipping and returns details")
 
         self.client.post(
