@@ -1,0 +1,18 @@
+{% autoescape off %}
+New paid order.
+
+Order {{ number }}
+Placed {{ placed|date:"F j, Y, H:i" }}
+Total {{ total }}
+Customer {{ customer_email }}
+
+Items
+{% for line in lines %}{{ line.quantity }} x {{ line.title }} — {{ line.line_total }}
+{% endfor %}
+Ship to
+{% for field in address_lines %}{{ field }}
+{% endfor %}
+Payment {{ payment_reference }}
+
+Open the order: {{ dashboard_url }}
+{% endautoescape %}

@@ -205,6 +205,19 @@ Stock is reserved when the Stripe page opens and released if the session expires
 cannot be sold twice. Details and launch gates are in
 [`instructions/stripe-checkout-plan.md`](instructions/stripe-checkout-plan.md).
 
+## Order email
+
+When a payment succeeds the site sends two plain-text emails after the order is
+committed: a receipt to the customer, and a new-order notice with the shipping
+address to `ORDER_NOTIFICATION_EMAIL` (falling back to
+`CUSTOM_ORDER_NOTIFICATION_EMAIL`). Sending is best effort — a mail failure is
+logged and never rolls back a paid order or fails the webhook.
+
+Both need `EMAIL_HOST`, `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD`, and
+`DEFAULT_FROM_EMAIL`. Order mail and the custom-order inquiry notice stay off
+while `EMAIL_HOST` is blank. Templates are
+`backend/home/templates/home/email/`.
+
 ## Tailwind CSS
 
 The `tailwind` service uses Node in Docker to watch Django templates and write

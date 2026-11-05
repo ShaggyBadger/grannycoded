@@ -17,7 +17,7 @@ from django.utils import timezone
 from oscar.core.loading import get_class, get_model
 
 from home.models import CheckoutSession, StripeEvent
-from home.services import stock_reservation
+from home.services import order_notifications, stock_reservation
 from home.services.oscar_orders import create_oscar_order
 
 logger = logging.getLogger(__name__)
@@ -298,6 +298,9 @@ def _fulfil(session: CheckoutSession, stripe_object):
         ]
     )
     stock_reservation.release_session(session)
+    transaction.on_commit(
+        lambda: order_notifications.send_order_emails(order.number)
+    )
     return order
 
 

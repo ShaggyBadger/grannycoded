@@ -1,0 +1,21 @@
+{% autoescape off %}
+Hi {{ greeting_name }},
+
+Thank you for your order.
+
+Order {{ number }}
+Placed {{ placed|date:"F j, Y" }}
+
+{% for line in lines %}{{ line.quantity }} x {{ line.title }} — {{ line.line_total }}
+{% endfor %}
+Total paid {{ total }}
+
+Ready-made pieces ship within 3 business days.
+
+Shipping to:
+{% for field in address_lines %}{{ field }}
+{% endfor %}
+If anything about this order looks wrong, reply to this email and we will sort it out.
+
+GrannyCoded
+{% endautoescape %}

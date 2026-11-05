@@ -410,6 +410,7 @@ class StorefrontTests(TestCase):
         basket = self.client.get(reverse("basket:summary")).wsgi_request.basket
         self.assertEqual(basket.lines.get().product, variant)
 
+    @override_settings(STRIPE_ENABLED=False, STRIPE_SECRET_KEY="")
     def test_basket_leads_to_checkout_and_checkout_closes_without_stripe(self):
         product = self.create_product()
         add_response = self.client.post(

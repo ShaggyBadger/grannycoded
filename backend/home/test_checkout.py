@@ -4,9 +4,11 @@ import hashlib
 import hmac
 import json
 import time
+from smtplib import SMTPException
 from decimal import Decimal
 from unittest.mock import patch
 
+from django.core import mail
 from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
@@ -351,3 +353,57 @@ class WebhookTests(CheckoutTestBase):
 
         self.assertEqual(page.status_code, 200)
         self.assertContains(page, "We are confirming your payment.")
+
+    @override_settings(
+        **STRIPE_TEST_SETTINGS,
+        EMAIL_HOST="smtp.example.com",
+        DEFAULT_FROM_EMAIL="GrannyCoded <orders@example.com>",
+        ORDER_NOTIFICATION_EMAIL="leah@example.com",
+    )
+    def test_paid_order_emails_the_customer_and_the_owner(self):
+        product = self.create_product(stock=1)
+        session = self.make_session(product)
+
+        with self.captureOnCommitCallbacks(execute=True):
+            self.assertEqual(self._post(self._event(session)).status_code, 200)
+
+        session.refresh_from_db()
+        self.assertEqual(len(mail.outbox), 2)
+        customer, owner = mail.outbox
+
+        self.assertEqual(customer.to, ["shopper@example.com"])
+        self.assertIn(session.order_number, customer.subject)
+        self.assertIn("12 Quilt Lane", customer.body)
+        self.assertIn("$179.00", customer.body)
+        self.assertIn("3 business days", customer.body)
+
+        self.assertEqual(owner.to, ["leah@example.com"])
+        self.assertIn(session.order_number, owner.subject)
+        self.assertIn("Ship to", owner.body)
+        self.assertIn("12 Quilt Lane", owner.body)
+        self.assertIn("/dashboard/orders/", owner.body)
+        self.assertIn("pi_test_1", owner.body)
+
+    @override_settings(
+        **STRIPE_TEST_SETTINGS,
+        EMAIL_HOST="smtp.example.com",
+        DEFAULT_FROM_EMAIL="GrannyCoded <orders@example.com>",
+        ORDER_NOTIFICATION_EMAIL="leah@example.com",
+    )
+    def test_mail_failure_leaves_the_order_intact(self):
+        product = self.create_product(stock=1)
+        session = self.make_session(product)
+
+        with patch(
+            "home.services.order_notifications.send_mail",
+            side_effect=SMTPException("relay down"),
+        ):
+            with self.captureOnCommitCallbacks(execute=True):
+                response = self._post(self._event(session))
+
+        self.assertEqual(response.status_code, 200)
+        session.refresh_from_db()
+        self.assertEqual(session.status, CheckoutSession.Status.PAID)
+        self.assertTrue(session.order_number)
+        Order = get_model("order", "Order")
+        self.assertEqual(Order.objects.count(), 1)

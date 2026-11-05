@@ -62,6 +62,10 @@ GOOGLE_SITE_VERIFICATION = os.environ.get("GOOGLE_SITE_VERIFICATION", "").strip(
 CUSTOM_ORDER_NOTIFICATION_EMAIL = os.environ.get(
     "CUSTOM_ORDER_NOTIFICATION_EMAIL", ""
 ).strip()
+ORDER_NOTIFICATION_EMAIL = (
+    os.environ.get("ORDER_NOTIFICATION_EMAIL", "").strip()
+    or CUSTOM_ORDER_NOTIFICATION_EMAIL
+)
 EMAIL_HOST = os.environ.get("EMAIL_HOST", "").strip()
 EMAIL_PORT = int(os.environ.get("EMAIL_PORT", "587"))
 EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER", "").strip()
@@ -316,7 +320,7 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 LANGUAGE_CODE = "en-us"
-TIME_ZONE = "UTC"
+TIME_ZONE = "America/New_York"
 USE_I18N = True
 USE_TZ = True
 
