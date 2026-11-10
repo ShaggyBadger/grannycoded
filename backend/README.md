@@ -8,14 +8,24 @@ UI live here.
   stock, baskets, and orders.
 - Oscar's dashboard is at `/dashboard/`; Wagtail admin is at `/admin/`; Jazzmin
   themes Django admin at `/django-admin/`.
-- Oscar's catalogue is at `/shop/` and basket at `/basket/`. Checkout remains
-  disabled until the later Stripe integration and launch gates are complete.
+- Oscar's catalogue is at `/shop/` and basket at `/basket/`. Checkout uses the
+  Stripe-hosted payment flow when a matching Stripe key is configured; it stays
+  closed when payments are unconfigured or the key/mode disagree.
 - Wagtail manages the Shipping & Returns page at `/shipping-returns/` and
   Privacy notice at `/privacy/`. The shipping policy is linked from the shop
   catalogue; Privacy is linked from the footer and custom-order form.
 - Custom-order requests are saved from `/custom-order/`; staff can review them
   and record fair sales through Oscar-linked tools at `/dashboard/custom-orders/`
   and `/dashboard/record-sale/`.
+- Unaccepted custom-order inquiries are retained for 12 months after their last
+  activity, then eligible for deletion. Accepted and converted inquiries are
+  excluded from automatic cleanup. Preview with
+  `docker compose exec web python manage.py purge_expired_inquiries`; add
+  `--execute` to delete eligible records. Schedule both cleanup commands
+  monthly in production, running inquiry cleanup first, followed by
+  `docker compose exec web python manage.py purge_pending_images --execute` to
+  process due image deletions. Both commands default to dry-run behavior unless
+  `--execute` is supplied.
 - Each Django app owns its models, migrations, and app-specific templates.
 - `templates/` contains shared Django templates; `static-src/` contains Tailwind
   input, and `static/` receives generated assets.

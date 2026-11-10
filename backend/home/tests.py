@@ -1,6 +1,7 @@
 import json
+from datetime import timedelta
 from decimal import Decimal
-from io import BytesIO
+from io import BytesIO, StringIO
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from xml.etree import ElementTree
@@ -193,12 +194,74 @@ class StorefrontTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "optional reference photo")
         self.assertContains(response, "stored privately")
-        self.assertContains(response, "do not currently expire automatically")
+        self.assertContains(response, "12 months without activity")
+        self.assertContains(
+            response, "Accepted or converted inquiries may be retained"
+        )
+        self.assertContains(response, "30-day recovery period")
         self.assertContains(response, "necessary session and security cookies")
         self.assertContains(response, "Online checkout is currently disabled")
         self.assertContains(response, "do not sell personal information")
         self.assertContains(response, 'href="mailto:grannycoded@gmail.com"', html=False)
         self.assertContains(response, 'href="/privacy/"', html=False)
+
+    def test_expired_inquiry_cleanup_is_dry_run_by_default_and_preserves_orders(self):
+        old = timezone.now() - timedelta(days=366)
+        recent = timezone.now() - timedelta(days=364)
+        expired = CustomOrderInquiry.objects.create(
+            name="Expired Request",
+            email="expired@example.com",
+            request_details="A request that was never accepted.",
+        )
+        declined = CustomOrderInquiry.objects.create(
+            name="Declined Request",
+            email="declined@example.com",
+            request_details="A declined request.",
+            status=CustomOrderInquiry.Status.DECLINED,
+        )
+        active = CustomOrderInquiry.objects.create(
+            name="Recent Request",
+            email="recent@example.com",
+            request_details="A recent request.",
+        )
+        accepted = CustomOrderInquiry.objects.create(
+            name="Accepted Request",
+            email="accepted@example.com",
+            request_details="An accepted request.",
+            status=CustomOrderInquiry.Status.ACCEPTED,
+        )
+        converted = CustomOrderInquiry.objects.create(
+            name="Converted Request",
+            email="converted@example.com",
+            request_details="A converted request.",
+            status=CustomOrderInquiry.Status.CONVERTED,
+        )
+        CustomOrderInquiry.objects.filter(pk__in=[expired.pk, declined.pk]).update(
+            updated_at=old
+        )
+        CustomOrderInquiry.objects.filter(
+            pk__in=[active.pk, accepted.pk, converted.pk]
+        ).update(updated_at=recent)
+        CustomOrderInquiry.objects.filter(
+            pk__in=[accepted.pk, converted.pk]
+        ).update(updated_at=old)
+
+        dry_run_output = StringIO()
+        call_command("purge_expired_inquiries", stdout=dry_run_output)
+
+        self.assertIn("2 eligible for deletion", dry_run_output.getvalue())
+        self.assertTrue(CustomOrderInquiry.objects.filter(pk=expired.pk).exists())
+        self.assertTrue(CustomOrderInquiry.objects.filter(pk=declined.pk).exists())
+
+        execute_output = StringIO()
+        call_command("purge_expired_inquiries", "--execute", stdout=execute_output)
+
+        self.assertIn("2 deleted", execute_output.getvalue())
+        self.assertFalse(CustomOrderInquiry.objects.filter(pk=expired.pk).exists())
+        self.assertFalse(CustomOrderInquiry.objects.filter(pk=declined.pk).exists())
+        self.assertTrue(CustomOrderInquiry.objects.filter(pk=active.pk).exists())
+        self.assertTrue(CustomOrderInquiry.objects.filter(pk=accepted.pk).exists())
+        self.assertTrue(CustomOrderInquiry.objects.filter(pk=converted.pk).exists())
 
     def test_homepage_has_branded_search_metadata_and_optional_verification(self):
         with override_settings(
