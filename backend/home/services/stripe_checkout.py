@@ -280,6 +280,7 @@ def _fulfil(session: CheckoutSession, stripe_object):
         paid,
         reference=(stripe_object.get("payment_intent") or session.stripe_session_id),
     )
+    _consume_stock(order)
 
     details = _shipping_details(stripe_object)
     session.status = CheckoutSession.Status.PAID
@@ -298,10 +299,30 @@ def _fulfil(session: CheckoutSession, stripe_object):
         ]
     )
     stock_reservation.release_session(session)
+    _close_basket(session)
     transaction.on_commit(
         lambda: order_notifications.send_order_emails(order.number)
     )
     return order
+
+
+def _consume_stock(order):
+    """Turn the order's reserved allocation into a real stock decrement."""
+    handler = get_class("order.processing", "EventHandler")(user=AnonymousUser())
+    order_lines = list(order.lines.all())
+    handler.consume_stock_allocations(
+        order, order_lines, [line.quantity for line in order_lines]
+    )
+
+
+def _close_basket(session):
+    """Retire the shopper's basket so the paid items do not stay in the cart."""
+    if not session.basket_id:
+        return
+    Basket = get_model("basket", "Basket")
+    Basket.objects.filter(pk=session.basket_id, status=Basket.OPEN).update(
+        status=Basket.SUBMITTED, date_submitted=timezone.now()
+    )
 
 
 def _record_payment(order, amount: Decimal, reference: str):

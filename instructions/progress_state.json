@@ -2,7 +2,6 @@
   "initiative": "Build the GrannyCoded Oscar/Wagtail direct-sales storefront",
   "status": "in_progress",
   "tasks": [
-    "Verify the Stripe-hosted Checkout and signed, idempotent webhook end-to-end in test mode",
     "Deploy the site to the Linode server with HTTPS so Stripe webhooks have a public endpoint",
     "Complete technical SEO baseline and prepare site metadata for Google Search Console",
     "Polish the Blog index into a professional responsive editorial homepage",
@@ -117,7 +116,9 @@
     "scripts/init.sh",
     "backend/home/management/commands/purge_expired_inquiries.py",
     "backend/home/migrations/0018_update_privacy_inquiry_retention.py",
-    "instructions/completed_tasks/2026-11-10-inquiry-retention.md"
+    "instructions/completed_tasks/2026-11-10-inquiry-retention.md",
+    "backend/home/migrations/0019_checkoutsession_basket_id.py",
+    "instructions/completed_tasks/2026-11-10-stripe-test-verification.md"
   ],
   "validation": [
     "Oscar 4.2 passes Docker checks/tests with Django 6.0.9 and Wagtail 8.0.1",
@@ -156,6 +157,8 @@
     "All 33 Docker tests pass on a fresh test database; Django checks, migration checks, Tailwind build, and desktop/mobile Privacy and custom-order renders pass",
     "Moved Shipping & Returns link out of global navigation and into the shop catalogue only; all 34 Docker tests pass and desktop/mobile shop renders were inspected",
     "Implemented Stripe-hosted Checkout, expiring stock reservations, signed/idempotent webhooks, Oscar paid orders, and order emails; all 55 Docker tests, Django checks, and migration consistency checks pass, while Stripe CLI end-to-end verification remains pending",
+    "Verified a real Stripe test-mode payment end to end against local Docker and the Stripe CLI: order 100027, signed webhook 200, replay ignored, bad signature 400",
+    "Fixed paid-order stock consumption and basket closure; all 56 Docker tests, Django checks, and migration checks pass",
     "Adopted 365-day inactivity retention for unaccepted inquiries; dry-run-first cleanup preserves accepted/converted records, updates Privacy, and passes 35 Docker tests, Django checks, and migration consistency checks"
   ],
   "blockers": [
@@ -163,13 +166,14 @@
     "Review the published Shipping & Returns and Privacy terms against applicable local requirements and actual production service providers before launch",
     "Obtain real About copy and social URLs before publishing those sections",
     "Configure custom-order notification email delivery if Leah wants email alerts",
-    "Run a Stripe test-mode end-to-end purchase/webhook verification; deploy HTTPS before configuring the public production webhook",
+    "Deploy the site over HTTPS before creating the Stripe live webhook destination and running a live-key purchase",
     "Set PUBLIC_SITE_URL to the production domain and GOOGLE_SITE_VERIFICATION to Search Console's HTML-tag content before submitting the site"
   ],
   "next_actions": [
+    "Build the production deployment: WSGI server, reverse proxy with TLS, production Compose/settings, collectstatic, and a public health check",
+    "Run a Stripe test-mode payment against the public HTTPS URL, then switch live keys and the live webhook destination",
     "Set the production canonical domain and Search Console verification value, then submit /sitemap.xml in Google Search Console",
     "Leah should review the 12 draft products and enter verified stock, photos, and prices before publishing",
-    "Keep Stripe in test mode until product, shipping, tax, policy, and email launch gates are complete",
     "Review the published policy pages against applicable local requirements and actual production service providers before enabling live payments",
     "Schedule monthly inquiry and due-image cleanup in production, and confirm actual hosting, storage, and email providers before deployment"
   ]

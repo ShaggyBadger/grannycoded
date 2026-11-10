@@ -197,6 +197,10 @@ class StartCheckoutTests(CheckoutTestBase):
         self.assertEqual(session.stripe_session_id, "cs_test_1")
         self.assertEqual(session.total_incl_tax, Decimal("149.00"))
         self.assertEqual(session.lines.get().product_title, "Mimi Quilt Coat")
+        Basket = get_model("basket", "Basket")
+        self.assertEqual(
+            session.basket_id, Basket.objects.get(status=Basket.OPEN).pk
+        )
         self.assertEqual(stock_reservation.available_quantity(product), 0)
         self.assertEqual(
             create.call_args.kwargs["line_items"][0]["price_data"]["unit_amount"], 14900
@@ -281,12 +285,30 @@ class WebhookTests(CheckoutTestBase):
         self.assertEqual(order.shipping_address.line1, "12 Quilt Lane")
         self.assertEqual(order.shipping_address.country.iso_3166_1_a2, "US")
         record = self.StockRecord.objects.get(product=product)
-        self.assertEqual(record.num_allocated, 1)
+        self.assertEqual(record.num_in_stock, 0)
+        self.assertEqual(record.num_allocated, 0)
         self.assertFalse(
             StockReservation.objects.filter(
                 session=session, released_at__isnull=True
             ).exists()
         )
+
+    @override_settings(**STRIPE_TEST_SETTINGS)
+    def test_paid_event_closes_the_shopper_basket(self):
+        product = self.create_product(stock=2)
+        self.add_to_basket(product)
+        Basket = get_model("basket", "Basket")
+        basket = Basket.objects.get(status=Basket.OPEN)
+        session = self.make_session(product)
+        session.basket_id = basket.pk
+        session.save(update_fields=["basket_id"])
+
+        response = self._post(self._event(session))
+
+        self.assertEqual(response.status_code, 200)
+        basket.refresh_from_db()
+        self.assertEqual(basket.status, Basket.SUBMITTED)
+        self.assertIsNotNone(basket.date_submitted)
 
     @override_settings(**STRIPE_TEST_SETTINGS)
     def test_replayed_event_does_not_create_a_second_order(self):

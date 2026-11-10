@@ -125,6 +125,7 @@ def start_checkout(request):
     try:
         with transaction.atomic():
             session = CheckoutSession.objects.create(
+                basket_id=basket.pk,
                 currency=basket.currency or "usd",
                 total_incl_tax=sum(
                     (unit_price * quantity for _, quantity, unit_price, _ in lines),
@@ -162,6 +163,9 @@ def start_checkout(request):
         )
     except stripe_checkout.PaymentsUnavailable:
         logger.exception("Could not open a Stripe session for %s", session.pk)
+        session.status = CheckoutSession.Status.FAILED
+        session.save(update_fields=["status", "updated_at"])
+        stock_reservation.release_session(session)
         return _render_summary(
             request,
             error="We could not open the secure payment page. Please try again.",
