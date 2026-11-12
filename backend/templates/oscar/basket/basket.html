@@ -61,7 +61,7 @@
         <h2 id="cart-summary-title">Order summary</h2>
         <p><span>Subtotal</span><span>{% if basket.is_tax_known %}{{ basket.total_incl_tax|currency:basket.currency }}{% else %}{{ basket.total_excl_tax|currency:basket.currency }}{% endif %}</span></p>
         <p class="cart-shipping-note">U.S. shipping is included in listed prices. Ready-made orders ship within 3 business days.</p>
-        <a class="primary-action checkout-action" href="{% url 'checkout:index' %}">Continue to checkout</a>
+        <a class="primary-action checkout-action" href="{% url 'checkout:index' %}">Review order</a>
         <a class="text-link arrow-link" href="/shop/">Continue shopping</a>
       </aside>
     </div>

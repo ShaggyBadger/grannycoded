@@ -38,6 +38,14 @@
       <p><span>Shipping</span><span>Included</span></p>
       <p class="cart-total"><span>Total</span><span>{{ total|currency:currency }}</span></p>
 
+      {% if stripe_enabled and lines %}
+        <form method="post" action="{% url 'checkout:start' %}">
+          {% csrf_token %}
+          <button class="primary-action checkout-action" type="submit">Pay {{ total|currency:currency }}</button>
+        </form>
+        <p class="payment-note">Card details are entered on Stripe's secure page.</p>
+      {% endif %}
+
       <div class="payment-assurance">
         <p class="payment-assurance-title">Payment handled by Stripe</p>
         <p>GrannyCoded never sees or stores your card number. Stripe processes the payment on its own secure page.</p>
@@ -48,12 +56,6 @@
         </a>
       </div>
 
-      {% if stripe_enabled and lines %}
-        <form method="post" action="{% url 'checkout:start' %}">
-          {% csrf_token %}
-          <button class="primary-action checkout-action" type="submit">Continue to secure payment</button>
-        </form>
-      {% endif %}
       <a class="text-link arrow-link" href="{% url 'basket:summary' %}">Back to your cart</a>
     </aside>
   </div>

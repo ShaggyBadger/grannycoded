@@ -115,7 +115,8 @@ class CheckoutPageTests(CheckoutTestBase):
         self.assertContains(response, "Mimi Quilt Coat")
         self.assertContains(response, "Payment handled by Stripe")
         self.assertContains(response, "never sees or stores your card number")
-        self.assertContains(response, "Continue to secure payment")
+        self.assertContains(response, "Pay ")
+        self.assertContains(response, "Card details are entered on Stripe's secure page.")
         self.assertContains(response, 'class="assurance-more arrow-link"')
         self.assertContains(
             response, reverse("checkout:payment_security")

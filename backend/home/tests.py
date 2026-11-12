@@ -493,7 +493,7 @@ class StorefrontTests(TestCase):
         self.assertContains(basket_response, "Cart (")
         self.assertContains(basket_response, "Your cart")
         self.assertContains(basket_response, "added to your cart")
-        self.assertContains(basket_response, "Continue to checkout")
+        self.assertContains(basket_response, "Review order")
         self.assertNotContains(basket_response, "Review shipping and returns")
 
         checkout_response = self.client.get(reverse("checkout:index"))

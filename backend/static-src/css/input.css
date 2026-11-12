@@ -1396,6 +1396,19 @@
     margin-bottom: 1.1rem;
   }
 
+  /* Pay button and its reassurance line sit directly under the total, so the
+     action is above the fold and the trust copy follows it. */
+  .cart-summary form .checkout-action {
+    margin-bottom: 0.55rem;
+  }
+
+  .payment-note {
+    margin: 0 0 1.5rem;
+    color: var(--color-brand-olive);
+    font-size: 0.82rem;
+    line-height: 1.45;
+  }
+
   .checkout-result {
     width: min(760px, calc(100% - 3rem));
     min-height: 48vh;
@@ -1977,6 +1990,9 @@
 
     .cart-summary {
       position: static;
+      /* Phones: show totals and the pay button before the item list so the
+         primary action is never below the fold. */
+      order: -1;
     }
 
     .cart-line {

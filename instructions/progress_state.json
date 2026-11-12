@@ -181,6 +181,7 @@
     "Set PUBLIC_SITE_URL to the production domain and GOOGLE_SITE_VERIFICATION to Search Console's HTML-tag content before submitting the site"
   ],
   "next_actions": [
+    "Fix checkout friction noted from the first live purchase: the primary CTA sits below the fold after a second full-width button; see instructions/checkout-ux-plan.md",
     "Apply the production stack: point DNS at the server, then follow instructions/deploy.md (mail one approved database dump or enter content in the live admin)",
     "Run a Stripe test-mode payment against the public HTTPS URL, then switch live keys and the live webhook destination",
     "Set the production canonical domain and Search Console verification value, then submit /sitemap.xml in Google Search Console",
