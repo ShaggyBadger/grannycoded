@@ -118,7 +118,16 @@
     "backend/home/migrations/0018_update_privacy_inquiry_retention.py",
     "instructions/completed_tasks/2026-11-10-inquiry-retention.md",
     "backend/home/migrations/0019_checkoutsession_basket_id.py",
-    "instructions/completed_tasks/2026-11-10-stripe-test-verification.md"
+    "instructions/completed_tasks/2026-11-10-stripe-test-verification.md",
+    "Dockerfile.prod",
+    "compose.prod.yaml",
+    "Caddyfile",
+    "scripts/docker-entrypoint.prod.sh",
+    ".env.production.example",
+    "backend/home/health.py",
+    "backend/home/management/commands/set_site_domain.py",
+    "instructions/deploy.md",
+    "instructions/production-deployment-plan.md"
   ],
   "validation": [
     "Oscar 4.2 passes Docker checks/tests with Django 6.0.9 and Wagtail 8.0.1",
@@ -159,7 +168,8 @@
     "Implemented Stripe-hosted Checkout, expiring stock reservations, signed/idempotent webhooks, Oscar paid orders, and order emails; all 55 Docker tests, Django checks, and migration consistency checks pass, while Stripe CLI end-to-end verification remains pending",
     "Verified a real Stripe test-mode payment end to end against local Docker and the Stripe CLI: order 100027, signed webhook 200, replay ignored, bad signature 400",
     "Fixed paid-order stock consumption and basket closure; all 56 Docker tests, Django checks, and migration checks pass",
-    "Adopted 365-day inactivity retention for unaccepted inquiries; dry-run-first cleanup preserves accepted/converted records, updates Privacy, and passes 35 Docker tests, Django checks, and migration consistency checks"
+    "Adopted 365-day inactivity retention for unaccepted inquiries; dry-run-first cleanup preserves accepted/converted records, updates Privacy, and passes 35 Docker tests, Django checks, and migration consistency checks",
+    "Added a production stack (gunicorn, Caddy TLS, compose.prod.yaml, production .env template) plus /health/ and set_site_domain; built the image and served /, /shop/, /health/, /static/css/site.css, /robots.txt, and /sitemap.xml over HTTPS with DJANGO_DEBUG=False"
   ],
   "blockers": [
     "Leah must verify current product data, photos, and stock from the 12-listing snapshot",
@@ -167,10 +177,11 @@
     "Obtain real About copy and social URLs before publishing those sections",
     "Configure custom-order notification email delivery if Leah wants email alerts",
     "Deploy the site over HTTPS before creating the Stripe live webhook destination and running a live-key purchase",
+    "No SSH access to the server from the working machine, and no domain is recorded in client.json, so the production stack has not been applied to the server yet",
     "Set PUBLIC_SITE_URL to the production domain and GOOGLE_SITE_VERIFICATION to Search Console's HTML-tag content before submitting the site"
   ],
   "next_actions": [
-    "Build the production deployment: WSGI server, reverse proxy with TLS, production Compose/settings, collectstatic, and a public health check",
+    "Apply the production stack: point DNS at the server, then follow instructions/deploy.md (mail one approved database dump or enter content in the live admin)",
     "Run a Stripe test-mode payment against the public HTTPS URL, then switch live keys and the live webhook destination",
     "Set the production canonical domain and Search Console verification value, then submit /sitemap.xml in Google Search Console",
     "Leah should review the 12 draft products and enter verified stock, photos, and prices before publishing",

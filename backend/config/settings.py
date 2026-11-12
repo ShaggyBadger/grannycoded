@@ -110,6 +110,19 @@ if not DEBUG:
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
 
+# The container health check reaches /health/ over plain HTTP on the private
+# Compose network, where the reverse proxy is the only route in. Every other
+# path still redirects to HTTPS. Django matches these against the path with the
+# leading slash removed.
+SECURE_REDIRECT_EXEMPT = [r"^health/$"]
+# HSTS stays off until the domain is known to work over HTTPS for good; a wrong
+# HSTS value is hard to walk back. Set SECURE_HSTS_SECONDS on the server.
+SECURE_HSTS_SECONDS = int(os.environ.get("SECURE_HSTS_SECONDS", "0"))
+SECURE_HSTS_INCLUDE_SUBDOMAINS = environment_bool(
+    "SECURE_HSTS_INCLUDE_SUBDOMAINS", default=False
+)
+SECURE_HSTS_PRELOAD = False
+
 INSTALLED_APPS = [
     "home",
     "django.contrib.admin",

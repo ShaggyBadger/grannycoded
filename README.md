@@ -5,9 +5,11 @@
 A reusable, Docker-first Django and Wagtail site with Oscar-powered commerce,
 PostgreSQL, and Tailwind CSS.
 
-The included Dockerfile and Compose file are for local development. They use
-Django's development server and a Tailwind watcher; production needs a separate
-server command, static-asset build/collection, and production environment.
+The included `Dockerfile` and `compose.yaml` are for local development. They use
+Django's development server and a Tailwind watcher. Production has its own
+files: `Dockerfile.prod` (gunicorn, Tailwind built at image build),
+`compose.prod.yaml` (web, Postgres, Caddy), and `Caddyfile` (TLS and static
+files). [`instructions/deploy.md`](instructions/deploy.md) is the runbook.
 
 ## Project layout
 
@@ -20,6 +22,9 @@ server command, static-asset build/collection, and production environment.
 - [`instructions/`](instructions/README.md) contains project guidance and
   working notes.
 - `compose.yaml` and `Dockerfile` at the root orchestrate the local services.
+- `Dockerfile.prod`, `compose.prod.yaml`, and `Caddyfile` are the production
+  stack (gunicorn behind Caddy with TLS); see
+  [`instructions/deploy.md`](instructions/deploy.md).
 
 ## What you need
 
@@ -231,6 +236,11 @@ container on its own sends nothing, so the site records no pageviews until that
 tag exists. Confirm it in GA4 → Reports → Realtime after the first deploy.
 
 ## Going live
+
+The production stack — gunicorn, Caddy with automatic TLS, and a production
+Compose file — is in [`instructions/deploy.md`](instructions/deploy.md), which
+covers the deploy itself and the content-transfer decision. The checklist below
+is the payment cutover that follows a working HTTPS deploy.
 
 Run these on the production server. The reasoning behind the payment gates is
 in [`instructions/stripe-checkout-plan.md`](instructions/stripe-checkout-plan.md).

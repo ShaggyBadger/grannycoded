@@ -2,30 +2,32 @@
 
 ## Where things stand
 
-Stripe is integrated and **verified end to end in test mode**. The test purchase
-exposed two bugs — paid stock was never consumed, and the cart stayed full after
-payment — both fixed and covered by tests (56 passing). Commit `7a5a74a` is
-pushed to `origin/main`. Local test orders were deleted and stock restored.
+The application is verified: **59 tests pass**, `manage.py check` is clean, there
+are no pending migrations, and every public route returns 200 against the dev
+stack. Stripe was confirmed end to end in test mode earlier.
 
-## Immediate next step: deploy
+The **production stack now exists** (commit pending): `Dockerfile.prod` (Tailwind
+built at image build, gunicorn), `compose.prod.yaml` (web + db + Caddy), a
+`Caddyfile` with automatic TLS, `/health/`, a production `.env` template, and the
+`set_site_domain` command. It was built and run as a throwaway stack with
+`DJANGO_DEBUG=False`: `/`, `/shop/`, `/health/`, `/static/css/site.css`,
+`/robots.txt`, and `/sitemap.xml` all served over HTTPS, and the container health
+check passed.
 
-The app is not deployable yet. `Dockerfile` and `compose.yaml` are local-dev only
-(`runserver`, Tailwind watcher, dev Postgres). Production needs:
+## Immediate next step: apply it to the server
 
-- gunicorn (or uvicorn) pinned and used as the server command
-- nginx (or Caddy) in front, with TLS
-- a production Compose file and production `.env`
-- `collectstatic` plus a real Tailwind build
-- a `/health/` endpoint (something currently polls it and gets 404)
+`instructions/deploy.md` is the runbook. Two things are missing and neither can
+be supplied from this machine:
 
-Server and domain exist but nothing is configured. Needed to proceed:
+1. **SSH access** to `45.79.212.144` (user `josh`) — the key offered here is
+   rejected, so nothing has been touched on the server.
+2. **The domain name** — `client.json` has `hosting.domains: []`. Caddy needs the
+   name to resolve to the server before it can issue a certificate.
 
-1. SSH host/user and OS
-2. Domain name and whether DNS points at the server
-3. Whether to provision over SSH or hand over files to run
-
-Deploy with Stripe keys blank first, so checkout stays closed while the site is
-publicly browsable.
+Once those exist: clone the repo, `cp .env.production.example .env`, fill it in,
+`docker compose -f compose.prod.yaml up -d --build`, then migrate, populate
+countries, `set_site_domain`, and create the superuser. Keep Stripe keys blank
+for this deploy so the site is browsable while checkout stays closed.
 
 ## Open launch gates (block live payments, not the deploy)
 
@@ -37,6 +39,7 @@ publicly browsable.
   container alone records no pageviews)
 - `.env` has a `pk_live_…` publishable key beside a test secret key; make the
   pair consistent
+- Raise `SECURE_HSTS_SECONDS` after the domain has been stable over HTTPS
 
 See `instructions/progress_state.json` and
 `instructions/completed_tasks/2026-11-10-stripe-test-verification.md`.

@@ -1,0 +1,82 @@
+# Production stack. Local development keeps using compose.yaml.
+#
+#   docker compose -f compose.prod.yaml up -d --build
+#
+# Requires a .env beside this file containing at least SITE_DOMAIN,
+# POSTGRES_PASSWORD, DJANGO_SECRET_KEY, DJANGO_ALLOWED_HOSTS, and
+# PUBLIC_SITE_URL. See .env.production.example and instructions/deploy.md.
+
+name: grannycoded
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.prod
+    env_file:
+      - .env
+    environment:
+      SITE_DOMAIN: ${SITE_DOMAIN:?Set SITE_DOMAIN in .env}
+    restart: unless-stopped
+    expose:
+      - "8000"
+    volumes:
+      - staticfiles:/app/backend/staticfiles
+      - media:/app/backend/media
+      - logs:/app/backend/logs
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          python -c "import os, urllib.request as u;
+          r = u.Request('http://127.0.0.1:8000/health/',
+          headers={'Host': os.environ['SITE_DOMAIN']});
+          u.urlopen(r, timeout=3)"
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-website}
+      POSTGRES_USER: ${POSTGRES_USER:-website}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      SITE_DOMAIN: ${SITE_DOMAIN:?Set SITE_DOMAIN in .env}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - staticfiles:/srv/static:ro
+      - media:/srv/media:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - web
+
+volumes:
+  postgres_data:
+  staticfiles:
+  media:
+  logs:
+  caddy_data:
+  caddy_config:

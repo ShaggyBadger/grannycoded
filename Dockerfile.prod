@@ -1,0 +1,54 @@
+# syntax=docker/dockerfile:1
+
+# Production image. The development Dockerfile stays as it is; this one compiles
+# Tailwind at build time and serves the site through gunicorn behind Caddy.
+FROM node:22-alpine AS assets
+
+WORKDIR /app/backend
+
+COPY backend/package.json backend/package-lock.json ./
+RUN npm ci
+
+COPY backend/ ./
+RUN npm run build:css
+
+
+FROM python:3.14-slim AS runtime
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1
+
+WORKDIR /app
+
+COPY backend/requirements.txt ./backend/requirements.txt
+RUN pip install -r backend/requirements.txt
+
+COPY backend/ ./backend/
+COPY --from=assets /app/backend/static/css/site.css ./backend/static/css/site.css
+COPY scripts/docker-entrypoint.prod.sh /usr/local/bin/docker-entrypoint
+
+RUN chmod +x /usr/local/bin/docker-entrypoint \
+    && adduser --system --ingroup www-data --home /app app \
+    && mkdir -p backend/staticfiles backend/media backend/logs \
+    && chown -R app:www-data backend/staticfiles backend/media backend/logs
+
+USER app
+
+WORKDIR /app/backend
+
+EXPOSE 8000
+
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint"]
+
+# Two workers suit the single-vCPU Linode (1 core, 2 GB). Raise this if the
+# host is resized.
+CMD ["gunicorn", "config.wsgi:application", \
+     "--bind", "0.0.0.0:8000", \
+     "--workers", "2", \
+     "--threads", "2", \
+     "--timeout", "60", \
+     "--forwarded-allow-ips", "*", \
+     "--no-control-socket", \
+     "--access-logfile", "-", \
+     "--error-logfile", "-"]

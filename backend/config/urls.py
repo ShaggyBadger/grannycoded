@@ -7,12 +7,14 @@ from wagtail import urls as wagtail_urls
 from wagtail.admin import urls as wagtailadmin_urls
 from wagtail.documents import urls as wagtaildocs_urls
 
-from home import views as home_views
+from home import health as health_views
 from home import ops_views
 from home import seo as seo_views
+from home import views as home_views
 
 urlpatterns = [
     path("django-admin/", admin.site.urls),
+    path("health/", health_views.health, name="health"),
     path("robots.txt", seo_views.robots_txt, name="robots_txt"),
     path("sitemap.xml", seo_views.sitemap_xml, name="sitemap_xml"),
     path("admin/", include(wagtailadmin_urls)),

@@ -1,0 +1,36 @@
+# Reverse proxy and TLS terminator for the storefront.
+#
+# SITE_DOMAIN comes from .env and must resolve to this server before Caddy can
+# obtain a certificate. Both the bare domain and www are served; www redirects
+# to the bare domain so there is one canonical address. Caddy issues a separate
+# certificate per name and renews both automatically.
+#
+# Add a global `email you@example.com` block above the site block if you want
+# certificate-expiry notices from Let's Encrypt.
+#
+# Static and media files are served straight from the shared volumes; everything
+# else goes to gunicorn. Caddy sets X-Forwarded-Proto, which Django trusts for
+# secure-cookie and HTTPS-redirect decisions.
+
+{$SITE_DOMAIN}, www.{$SITE_DOMAIN} {
+	encode zstd gzip
+
+	# One canonical address: www redirects to the bare domain, preserving the
+	# path and query string.
+	@www host www.{$SITE_DOMAIN}
+	redir @www https://{$SITE_DOMAIN}{uri} permanent
+
+	handle_path /static/* {
+		root * /srv/static
+		file_server
+	}
+
+	handle_path /media/* {
+		root * /srv/media
+		file_server
+	}
+
+	handle {
+		reverse_proxy web:8000
+	}
+}

@@ -7,7 +7,9 @@ from tempfile import TemporaryDirectory
 from xml.etree import ElementTree
 
 from django.conf import settings
+from django.contrib.sites.models import Site as DjangoSite
 from django.core.management import call_command
+from django.core.management.base import CommandError
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.contrib.auth import get_user_model
 from django.test import RequestFactory, TestCase, override_settings
@@ -1117,3 +1119,41 @@ class StorefrontTests(TestCase):
         self.assertEqual(image.asset.public_file.name, image_details["storage_name"])
         self.assertEqual(image.asset.display_name, "Floral Duster Coat")
         self.assertEqual(image.alt_text, "Floral Duster Coat")
+
+
+class HealthCheckTests(TestCase):
+    def test_health_reports_ready(self):
+        response = self.client.get("/health/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {"status": "ok"})
+
+    @override_settings(SECURE_SSL_REDIRECT=True)
+    def test_health_is_reachable_over_plain_http_behind_the_proxy(self):
+        response = self.client.get("/health/", secure=False)
+
+        self.assertEqual(response.status_code, 200)
+
+    @override_settings(SECURE_SSL_REDIRECT=True)
+    def test_public_pages_still_redirect_to_https(self):
+        response = self.client.get("/shop/", secure=False)
+
+        self.assertEqual(response.status_code, 301)
+        self.assertTrue(response["Location"].startswith("https://"))
+
+
+class SetSiteDomainCommandTests(TestCase):
+    def test_command_points_both_site_records_at_the_domain(self):
+        call_command("set_site_domain", "grannycoded.example", "--site-name", "GrannyCoded")
+
+        wagtail_site = Site.objects.get(is_default_site=True)
+        self.assertEqual(wagtail_site.hostname, "grannycoded.example")
+        self.assertEqual(wagtail_site.port, 443)
+
+        django_site = DjangoSite.objects.get(pk=settings.SITE_ID)
+        self.assertEqual(django_site.domain, "grannycoded.example")
+        self.assertEqual(django_site.name, "GrannyCoded")
+
+    def test_command_rejects_a_full_url(self):
+        with self.assertRaises(CommandError):
+            call_command("set_site_domain", "https://grannycoded.example/")
