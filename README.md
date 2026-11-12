@@ -225,22 +225,34 @@ while `EMAIL_HOST` is blank. Templates are
 
 ## Analytics
 
-`base.html` loads the Google Tag Manager container `GTM-WZG3QL5Z`. It is
-deliberately skipped on local development, staff pages, the basket, checkout,
-and search results; the rule lives in `seo_metadata` in
-`backend/home/seo.py`.
+The site is live at `https://grannycoded.com`. `base.html` loads the Google Tag
+Manager container `GTM-WZG3QL5Z`; the published container sends pageviews to the
+GA4 property `G-35HS92XDW4`, with enhanced measurement on (outbound clicks,
+scroll, downloads, history changes, forms, video, site search) and `purchase`
+marked as a key event.
 
-**Still to do:** add a **GA4 Configuration** tag inside that container, using
-the property's `G-…` measurement ID and a trigger of *All Pages*. A GTM
-container on its own sends nothing, so the site records no pageviews until that
-tag exists. Confirm it in GA4 → Reports → Realtime after the first deploy.
+Loading is skipped on local development, staff pages, accounts, the basket,
+checkout, and search results; the rule is `seo_should_noindex` in
+`backend/home/seo.py`. Because checkout never loads the container, GA4 records
+traffic and product interest but **no ecommerce events** — a paid order is
+invisible to Analytics.
+
+The container configuration lives in Tag Manager, not this repository, so a tag
+change is invisible to code review. Record meaningful changes here. Confirm
+delivery in GA4 → Reports → Realtime after a deploy or tag change.
+
+The Privacy page discloses Analytics and the analytics user-data collection (see
+`backend/home/migrations/0020_capture_live_privacy_notice.py`); update it in the
+same change as any new tag that collects more.
 
 ## Going live
 
-The production stack — gunicorn, Caddy with automatic TLS, and a production
-Compose file — is in [`instructions/deploy.md`](instructions/deploy.md), which
-covers the deploy itself and the content-transfer decision. The checklist below
-is the payment cutover that follows a working HTTPS deploy.
+The site is deployed and browsable at `https://grannycoded.com` with checkout
+closed. The production stack — gunicorn, Caddy with automatic TLS, and the
+production Compose file — is in [`instructions/deploy.md`](instructions/deploy.md),
+which covers the deploy itself, the content-transfer decision, and how to ship a
+change. The checklist below is the payment cutover that follows a working HTTPS
+deploy.
 
 Run these on the production server. The reasoning behind the payment gates is
 in [`instructions/stripe-checkout-plan.md`](instructions/stripe-checkout-plan.md).
@@ -248,7 +260,8 @@ in [`instructions/stripe-checkout-plan.md`](instructions/stripe-checkout-plan.md
 ### Before switching Stripe to live
 
 - [ ] The domain resolves to the server and `PUBLIC_SITE_URL` is
-      `https://<domain>`
+      `https://grannycoded.com` (domain and DNS done; confirm the value in the
+      server `.env`)
 - [ ] `DJANGO_DEBUG=False`, and `DJANGO_ALLOWED_HOSTS` and
       `DJANGO_CSRF_TRUSTED_ORIGINS` name the real domain
 - [ ] `migrate` has run, and `oscar_populate_countries --initial-only` too, or
@@ -267,7 +280,7 @@ with the live values commented out beside them.
 - [ ] Comment out the test `STRIPE_SECRET_KEY` and uncomment the live one
 - [ ] Set `STRIPE_LIVE_MODE=True` — the key and the mode must change together
 - [ ] In the Stripe dashboard, create the live webhook destination for
-      `https://<domain>/checkout/webhook/`, subscribed to
+      `https://grannycoded.com/checkout/webhook/`, subscribed to
       `checkout.session.completed`, `checkout.session.async_payment_succeeded`,
       `checkout.session.async_payment_failed`, and `checkout.session.expired`
 - [ ] Uncomment `STRIPE_WEBHOOK_SECRET` and paste **that destination's** signing
@@ -293,8 +306,9 @@ logs the reason, which is the safe failure but looks like a broken shop.
 - [ ] Buy one cheap item with a real card: the order appears in the dashboard,
       both emails arrive, and stock drops
 - [ ] Refund it in Stripe and put the stock back
-- [ ] GA4 realtime shows the visit — this needs the GA4 Configuration tag in the
-      Tag Manager container first, see [Analytics](#analytics)
+- [ ] GA4 realtime shows the visit. The container already sends to `G-35HS92XDW4`;
+      see [Analytics](#analytics). Purchases will not appear — checkout does not
+      load the container
 
 If the signing secret is wrong, customers are charged and no order is created.
 Stripe retries failed deliveries for three days, so correcting the secret lets

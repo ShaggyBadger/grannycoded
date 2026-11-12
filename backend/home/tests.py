@@ -196,13 +196,12 @@ class StorefrontTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "optional reference photo")
         self.assertContains(response, "stored privately")
-        self.assertContains(response, "12 months without activity")
-        self.assertContains(
-            response, "Accepted or converted inquiries may be retained"
-        )
-        self.assertContains(response, "30-day recovery period")
+        self.assertContains(response, "do not currently expire automatically")
+        self.assertContains(response, "marked for deletion with a 30-day recovery period")
         self.assertContains(response, "necessary session and security cookies")
-        self.assertContains(response, "Online checkout is currently disabled")
+        self.assertContains(response, "Online payments are processed by Stripe")
+        self.assertContains(response, "Google Analytics")
+        self.assertContains(response, "Google may receive a hashed copy")
         self.assertContains(response, "do not sell personal information")
         self.assertContains(response, 'href="mailto:grannycoded@gmail.com"', html=False)
         self.assertContains(response, 'href="/privacy/"', html=False)

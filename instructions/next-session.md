@@ -2,44 +2,38 @@
 
 ## Where things stand
 
-The application is verified: **59 tests pass**, `manage.py check` is clean, there
-are no pending migrations, and every public route returns 200 against the dev
-stack. Stripe was confirmed end to end in test mode earlier.
+The store is **live at `https://grannycoded.com`** on the Linode server: gunicorn,
+Postgres, and Caddy with TLS, all three containers healthy, `www` redirecting to
+the bare domain. Checkout is closed until Stripe live keys and the live webhook
+destination are added. Content is now authored in the production Wagtail admin;
+production is the source of truth.
 
-The **production stack now exists** (commit pending): `Dockerfile.prod` (Tailwind
-built at image build, gunicorn), `compose.prod.yaml` (web + db + Caddy), a
-`Caddyfile` with automatic TLS, `/health/`, a production `.env` template, and the
-`set_site_domain` command. It was built and run as a throwaway stack with
-`DJANGO_DEBUG=False`: `/`, `/shop/`, `/health/`, `/static/css/site.css`,
-`/robots.txt`, and `/sitemap.xml` all served over HTTPS, and the container health
-check passed.
+Verified after launch: `/`, `/shop/`, product pages, `/blog/`, `/custom-order/`,
+`/privacy/`, `/shipping-returns/`, and `/sitemap.xml` all serve `https://` URLs.
+The GTM container `GTM-WZG3QL5Z` is on the public pages and sends pageviews to
+GA4 property `G-35HS92XDW4`.
 
-## Immediate next step: apply it to the server
-
-`instructions/deploy.md` is the runbook. Two things are missing and neither can
-be supplied from this machine:
-
-1. **SSH access** to `45.79.212.144` (user `josh`) — the key offered here is
-   rejected, so nothing has been touched on the server.
-2. **The domain name** — `client.json` has `hosting.domains: []`. Caddy needs the
-   name to resolve to the server before it can issue a certificate.
-
-Once those exist: clone the repo, `cp .env.production.example .env`, fill it in,
-`docker compose -f compose.prod.yaml up -d --build`, then migrate, populate
-countries, `set_site_domain`, and create the superuser. Keep Stripe keys blank
-for this deploy so the site is browsable while checkout stays closed.
+The Privacy page was edited in the live admin during launch and drifted from the
+repository; `backend/home/migrations/0020_capture_live_privacy_notice.py` now
+records that copy and adds the Analytics user-data disclosure.
 
 ## Open launch gates (block live payments, not the deploy)
 
-- Leah verifies the 12 products: photos, prices, stock
-- Shipping/returns and Privacy reviewed against real providers
+- Leah verifies the products: photos, prices, stock
 - Tax handling configured
-- About copy and social URLs
-- GA4 Configuration tag added inside GTM container `GTM-WZG3QL5Z` (the
-  container alone records no pageviews)
 - `.env` has a `pk_live_…` publishable key beside a test secret key; make the
   pair consistent
+- Live webhook destination created for
+  `https://grannycoded.com/checkout/webhook/`
 - Raise `SECURE_HSTS_SECONDS` after the domain has been stable over HTTPS
+- Submit `/sitemap.xml` in Google Search Console, and confirm the GA4 tag in
+  GA4 → Realtime
+
+## Known gap
+
+GA4 cannot record purchases: the container is suppressed on `/basket/`,
+`/checkout/`, and `/accounts/`, so no ecommerce events exist. This is documented
+in `README.md` (Analytics) and is deliberately unplanned.
 
 See `instructions/progress_state.json` and
 `instructions/completed_tasks/2026-11-10-stripe-test-verification.md`.
