@@ -350,6 +350,10 @@
     padding-block: 8rem 6rem;
   }
 
+  .shop-preview-action {
+    margin-top: clamp(1.75rem, 3vw, 2.5rem);
+  }
+
   .section-heading {
     display: flex;
     align-items: end;
@@ -1800,8 +1804,8 @@
     }
 
     .product-rail {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 1.5rem 0.8rem;
+      grid-template-columns: minmax(0, 1fr);
+      gap: 2.25rem;
     }
 
     .product-preview:nth-child(2),
@@ -1809,10 +1813,11 @@
       margin-top: 0;
     }
 
-    .product-preview-info {
-      align-items: start;
-      flex-direction: column;
-      gap: 0.25rem;
+    .shop-preview-action {
+      display: flex;
+      justify-content: center;
+      width: 100%;
+      margin-top: 1.75rem;
     }
 
     .maker-story {

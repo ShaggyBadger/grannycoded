@@ -343,9 +343,29 @@ class StorefrontTests(TestCase):
 
         self.assertContains(production_response, "Disallow: /admin/")
         self.assertContains(production_response, "Allow: /")
+        self.assertContains(production_response, "Disallow: /health/")
         self.assertContains(
             production_response,
             "Sitemap: https://grannycoded.example/sitemap.xml",
+        )
+
+    def test_sitemap_lists_the_payment_security_page(self):
+        response = self.client.get("/sitemap.xml")
+
+        self.assertIn(
+            f"{settings.PUBLIC_SITE_URL}/checkout/payment-security/",
+            response.content.decode(),
+        )
+
+    def test_public_service_page_is_indexable_while_cart_and_checkout_are_not(self):
+        security_response = self.client.get(reverse("checkout:payment_security"))
+        basket_response = self.client.get(reverse("basket:summary"))
+
+        self.assertContains(
+            security_response, 'name="robots" content="index,follow"', html=False
+        )
+        self.assertContains(
+            basket_response, 'name="robots" content="noindex,follow"', html=False
         )
 
     def test_oscar_catalogue_and_product_detail_use_the_brand_templates(self):

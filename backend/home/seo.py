@@ -30,9 +30,14 @@ def seo_metadata(request):
         "/checkout/",
         "/accounts/",
     )
+    # Public content that happens to live under a noindex prefix.
+    indexable_paths = ("/checkout/payment-security/",)
     should_noindex = (
         settings.DEBUG
-        or request.path.startswith(noindex_prefixes)
+        or (
+            request.path.startswith(noindex_prefixes)
+            and request.path not in indexable_paths
+        )
         or bool(request.GET.get("q"))
     )
     return {
@@ -44,9 +49,9 @@ def seo_metadata(request):
 
 
 def sitemap_xml(request):
-    """List the shop, live public pages/products, categories, and custom orders."""
+    """List the shop, public pages, products, categories, and service pages."""
     locations = {}
-    for path in ("/shop/", "/custom-order/"):
+    for path in ("/shop/", "/custom-order/", "/checkout/payment-security/"):
         locations[_absolute_url(path)] = None
 
     site = Site.find_for_request(request) or Site.objects.filter(is_default_site=True).first()
@@ -107,6 +112,7 @@ def robots_txt(request):
                 "Disallow: /admin/",
                 "Disallow: /django-admin/",
                 "Disallow: /dashboard/",
+                "Disallow: /health/",
             ]
         )
         lines.append(f"Sitemap: {settings.PUBLIC_SITE_URL}/sitemap.xml")

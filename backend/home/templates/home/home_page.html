@@ -34,7 +34,6 @@
     <section class="shop-preview section-wrap" aria-labelledby="preview-title">
       <div class="section-heading">
         <h2 id="preview-title">Available, for now.</h2>
-        <a class="text-link arrow-link" href="/shop/">See every piece</a>
       </div>
       <div class="product-rail">
         {% for product in shop_preview %}
@@ -61,6 +60,7 @@
           </article>
         {% endfor %}
       </div>
+      <a class="primary-action arrow-link shop-preview-action" href="/shop/">See every piece</a>
     </section>
   {% endif %}
 
